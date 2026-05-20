@@ -1,0 +1,10 @@
+{
+  "name": "checklist-chargeback-contestacao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicacao web estatica para checklist operacional de chargeback e contestacao.",
+  "scripts": {
+    "start": "vercel dev",
+    "test": "node --check app.js"
+  }
+}

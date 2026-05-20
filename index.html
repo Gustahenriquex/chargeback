@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Checklist Chargeback & Contestação</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script defer src="/app.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Checklist Chargeback & Contestação</h1>
+        <p>Controle operacional, classificação automática e exportação da base final.</p>
+      </div>
+      <div class="header-actions">
+        <label class="button button-primary" for="fileInput">Importar CSV/XLSX</label>
+        <input id="fileInput" class="file-input" type="file" accept=".csv,.xlsx,.xls" />
+        <button id="classifyButton" class="button" type="button">Rodar classificação</button>
+        <button id="exportXlsxButton" class="button" type="button">Exportar XLSX</button>
+        <button id="exportCsvButton" class="button" type="button">Exportar CSV</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section id="summaryCards" class="summary-grid" aria-label="Resumo"></section>
+
+      <section class="toolbar" aria-label="Filtros">
+        <div class="filter-grid">
+          <label>
+            <span>Bandeira</span>
+            <select id="filterBandeira"></select>
+          </label>
+          <label>
+            <span>Transportadora</span>
+            <select id="filterTransportadora"></select>
+          </label>
+          <label>
+            <span>Retorno de aprovação</span>
+            <select id="filterRetorno"></select>
+          </label>
+          <label>
+            <span>Classificação IA</span>
+            <select id="filterClassificacao"></select>
+          </label>
+          <label>
+            <span>Risco</span>
+            <select id="filterRisco"></select>
+          </label>
+          <label>
+            <span>Status prazo</span>
+            <select id="filterStatus"></select>
+          </label>
+        </div>
+        <button id="clearFiltersButton" class="button button-ghost" type="button">Limpar filtros</button>
+      </section>
+
+      <section class="table-section" aria-label="Tabela de chargebacks">
+        <div id="emptyState" class="empty-state">
+          <strong>Nenhuma planilha importada.</strong>
+          <span>Importe um CSV ou XLSX para visualizar, classificar, editar e exportar os casos.</span>
+        </div>
+        <div id="tableWrap" class="table-wrap" hidden>
+          <table id="chargebackTable"></table>
+        </div>
+      </section>
+    </main>
+
+    <aside id="drawer" class="drawer" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <section class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <header class="drawer-header">
+          <div>
+            <h2 id="drawerTitle">Caso</h2>
+            <p id="drawerSubtitle"></p>
+          </div>
+          <button class="icon-button" type="button" data-close-drawer aria-label="Fechar">×</button>
+        </header>
+
+        <div class="drawer-content">
+          <div class="case-summary">
+            <span id="drawerClassification" class="badge"></span>
+            <span id="drawerRisk" class="badge"></span>
+            <span id="drawerDeadline" class="badge"></span>
+          </div>
+
+          <section>
+            <h3>Dados principais</h3>
+            <dl id="drawerDetails" class="detail-grid"></dl>
+          </section>
+
+          <section>
+            <h3>Checklist operacional</h3>
+            <div id="drawerChecklist" class="checklist"></div>
+          </section>
+
+          <section>
+            <h3>Pendências encontradas</h3>
+            <ul id="drawerPendencies" class="pendency-list"></ul>
+          </section>
+
+          <section>
+            <h3>Evidências necessárias</h3>
+            <ul id="drawerEvidence" class="pendency-list"></ul>
+          </section>
+
+          <section class="drawer-edit-grid">
+            <label>
+              <span>Próxima ação recomendada</span>
+              <select id="drawerAction"></select>
+            </label>
+            <label>
+              <span>Observação manual</span>
+              <textarea id="drawerObs" rows="4"></textarea>
+            </label>
+            <label>
+              <span>Responsável/aprovação</span>
+              <input id="drawerResponsible" type="text" />
+            </label>
+          </section>
+        </div>
+      </section>
+    </aside>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
