@@ -76,7 +76,7 @@ Se for rodar pelo `.cmd` em vez do `.exe`, instale as dependências uma vez:
 
 ```powershell
 py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-automation.txt
 ```
 
 ## Validação

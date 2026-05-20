@@ -1,0 +1,16 @@
+chargeback_automation/
+chargeback_checklist.py
+build_exe.ps1
+instalar_agendamento_mensal.ps1
+run_chargeback_automation.cmd
+run_chargeback_automation_silent.cmd
+requirements-automation.txt
+requirements-build.txt
+config.example.env
+database/
+tests/
+outputs/
+*.py
+*.ps1
+*.cmd
+*.env

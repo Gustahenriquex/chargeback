@@ -7,7 +7,7 @@ if (-not (Test-Path ".\.venv\Scripts\python.exe")) {
 }
 
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-automation.txt
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
 
 .\.venv\Scripts\python.exe -m PyInstaller `
