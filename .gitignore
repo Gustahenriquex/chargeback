@@ -1,10 +1,5 @@
-.venv/
-dist/
-build/
-*.spec
-__pycache__/
-*.py[cod]
 .env
-outputs/
 *.log
+outputs/
 .vercel/
+node_modules/

@@ -1,3 +1,0 @@
-NSU;Data da Transação;Data Abertura de Chargeback;Prazo de contestação;Valor do Chargeback;Bandeira;Valor taxa;Transportadora;Número do Rastreio;Data de envio para o cliente;Retorno de aprovação;ID interno;Motivo de recusa;Obs;Ação;Aprovação por quem?
-12345;10/05/2026;15/05/2026;25/05/2026;R$ 53,98;Visa;R$ 2,50;Correios;BR123456789;11/05/2026;Pendente;PED-1;;cliente desconhece compra não reconhecida;;
-67890;08/05/2026;12/05/2026;19/05/2026;R$ 120,00;Mastercard;R$ 4,20;;;;;PED-2;Documento recusado;solicitar estorno e ajuste financeiro;;
