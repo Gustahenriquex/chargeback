@@ -17,6 +17,15 @@ O projeto também tem uma versão web estática pronta para Vercel:
 
 Na Vercel, o navegador não consegue acessar automaticamente o arquivo local do OneDrive. Por isso, a versão web funciona com upload de CSV/XLSX, classificação em memória, edição inline, filtros, painel lateral do caso e exportação CSV/XLSX.
 
+A tela também consulta pedidos na VTEX pelo backend serverless da Vercel. Configure as variáveis de ambiente no projeto da Vercel:
+
+- `VTEX_ACCOUNT`: nome da conta VTEX.
+- `VTEX_ENVIRONMENT`: opcional, padrão `vtexcommercestable`.
+- `VTEX_APP_KEY`: app key com permissão de leitura de pedidos.
+- `VTEX_APP_TOKEN`: app token correspondente.
+
+Ao informar pedido/NSU, o app tenta buscar o pedido na OMS VTEX, preencher ID interno, status, bandeira, transportadora, rastreio e calcular o prazo de contestação como 10 dias após o faturamento. No painel do caso, é possível anexar fotos/evidências e baixar um e-mail `.eml` padrão para envio da solicitação.
+
 Para publicar:
 
 1. Suba este repositório para o GitHub.

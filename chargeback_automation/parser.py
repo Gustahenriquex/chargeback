@@ -102,6 +102,8 @@ ALIASES: dict[str, list[str]] = {
     "pendencias": ["pendencias", "pendências"],
     "proxima_acao": ["proxima acao", "próxima ação", "acao recomendada"],
     "status_prazo": ["status prazo", "status do prazo"],
+    "status_vtex": ["status vtex", "status pedido", "status do pedido"],
+    "data_faturamento": ["data faturamento", "faturamento", "data da nota", "data nf"],
     "data_analise": ["data analise", "data análise", "analisado em"],
     "origem_classificacao": [
         "origem classificacao",
@@ -178,6 +180,7 @@ def normalize_record(raw: dict[str, Any]) -> dict[str, Any]:
         "data_abertura_chargeback",
         "prazo_contestacao",
         "data_envio_cliente",
+        "data_faturamento",
         "data_analise",
     ):
         if date_field in record:

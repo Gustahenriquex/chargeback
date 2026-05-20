@@ -24,6 +24,21 @@
     </header>
 
     <main class="app-shell">
+      <section class="vtex-panel" aria-label="Consulta VTEX">
+        <div>
+          <h2>Consulta VTEX</h2>
+          <p>Informe o número do pedido/NSU para preencher ID interno, prazo, status, transportadora, bandeira e rastreio.</p>
+        </div>
+        <div class="vtex-actions">
+          <label>
+            <span>Pedido ou NSU</span>
+            <input id="vtexOrderInput" type="text" placeholder="Ex: 123456-01" />
+          </label>
+          <button id="vtexLookupButton" class="button button-primary" type="button">Buscar na VTEX</button>
+        </div>
+        <p id="vtexLookupStatus" class="inline-status"></p>
+      </section>
+
       <section id="summaryCards" class="summary-grid" aria-label="Resumo"></section>
 
       <section class="toolbar" aria-label="Filtros">
@@ -106,6 +121,18 @@
           </section>
 
           <section class="drawer-edit-grid">
+            <label>
+              <span>E-mail destino</span>
+              <input id="drawerEmailTo" type="email" placeholder="chargeback@exemplo.com.br" />
+            </label>
+            <label>
+              <span>Fotos/evidências</span>
+              <input id="drawerEvidenceFiles" type="file" multiple accept="image/*,.pdf,.png,.jpg,.jpeg" />
+            </label>
+            <div class="email-actions">
+              <button id="copyEmailButton" class="button" type="button">Copiar corpo do e-mail</button>
+              <button id="downloadEmailButton" class="button button-primary" type="button">Baixar e-mail .eml</button>
+            </div>
             <label>
               <span>Próxima ação recomendada</span>
               <select id="drawerAction"></select>

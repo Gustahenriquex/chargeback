@@ -21,6 +21,8 @@ create table if not exists public.chargeback_checklist (
     pendencias text,
     proxima_acao text,
     status_prazo text,
+    status_vtex text,
+    data_faturamento date,
     classification_source text,
     imported_file_name text,
     analyzed_at timestamp,
@@ -42,6 +44,9 @@ create index if not exists idx_chargeback_checklist_risco
 
 create index if not exists idx_chargeback_checklist_status_prazo
     on public.chargeback_checklist (status_prazo);
+
+create index if not exists idx_chargeback_checklist_status_vtex
+    on public.chargeback_checklist (status_vtex);
 
 create index if not exists idx_chargeback_checklist_classificacao_ia
     on public.chargeback_checklist (classificacao_ia);

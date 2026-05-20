@@ -5,6 +5,6 @@
   "description": "Aplicacao web estatica para checklist operacional de chargeback e contestacao.",
   "scripts": {
     "start": "vercel dev",
-    "test": "node --check app.js"
+    "test": "node --check app.js && node --check api/vtex-order.js"
   }
 }

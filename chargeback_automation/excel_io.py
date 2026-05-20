@@ -432,6 +432,8 @@ def apply_layout(ws, mapping: dict[str, int], header_row: int, workbook: Workboo
         "pendencias": 36,
         "proxima_acao": 30,
         "status_prazo": 22,
+        "status_vtex": 24,
+        "data_faturamento": 18,
         "data_analise": 16,
         "origem_classificacao": 26,
     }
@@ -443,6 +445,7 @@ def apply_layout(ws, mapping: dict[str, int], header_row: int, workbook: Workboo
         "data_abertura_chargeback",
         "prazo_contestacao",
         "data_envio_cliente",
+        "data_faturamento",
         "data_analise",
     ]
     for field in date_fields:

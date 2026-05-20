@@ -23,6 +23,8 @@ const generatedColumns = [
   "Pendências",
   "Próxima ação",
   "Status prazo",
+  "Status VTEX",
+  "Data faturamento",
   "Data análise",
   "Origem classificação",
 ];
@@ -51,6 +53,8 @@ const headerToField = {
   "Pendências": "pendencias",
   "Próxima ação": "proximaAcao",
   "Status prazo": "statusPrazo",
+  "Status VTEX": "statusVtex",
+  "Data faturamento": "dataFaturamento",
   "Data análise": "dataAnalise",
   "Origem classificação": "origemClassificacao",
 };
@@ -79,6 +83,8 @@ const aliases = {
   pendencias: ["pendencias"],
   proximaAcao: ["proxima acao", "acao recomendada"],
   statusPrazo: ["status prazo", "status do prazo"],
+  statusVtex: ["status vtex", "status pedido", "status do pedido"],
+  dataFaturamento: ["data faturamento", "faturamento", "data da nota", "data nf"],
   dataAnalise: ["data analise", "analisado em"],
   origemClassificacao: ["origem classificacao", "classification source"],
 };
@@ -130,6 +136,7 @@ const state = {
     risco: "",
     statusPrazo: "",
   },
+  selectedEvidenceFiles: [],
 };
 
 const els = {
@@ -143,6 +150,9 @@ const els = {
   tableWrap: document.getElementById("tableWrap"),
   emptyState: document.getElementById("emptyState"),
   toast: document.getElementById("toast"),
+  vtexOrderInput: document.getElementById("vtexOrderInput"),
+  vtexLookupButton: document.getElementById("vtexLookupButton"),
+  vtexLookupStatus: document.getElementById("vtexLookupStatus"),
   drawer: document.getElementById("drawer"),
   drawerTitle: document.getElementById("drawerTitle"),
   drawerSubtitle: document.getElementById("drawerSubtitle"),
@@ -153,6 +163,10 @@ const els = {
   drawerChecklist: document.getElementById("drawerChecklist"),
   drawerPendencies: document.getElementById("drawerPendencies"),
   drawerEvidence: document.getElementById("drawerEvidence"),
+  drawerEmailTo: document.getElementById("drawerEmailTo"),
+  drawerEvidenceFiles: document.getElementById("drawerEvidenceFiles"),
+  copyEmailButton: document.getElementById("copyEmailButton"),
+  downloadEmailButton: document.getElementById("downloadEmailButton"),
   drawerAction: document.getElementById("drawerAction"),
   drawerObs: document.getElementById("drawerObs"),
   drawerResponsible: document.getElementById("drawerResponsible"),
@@ -215,6 +229,11 @@ function parseDate(value) {
     return Number.isNaN(date.getTime()) ? value : date;
   }
   const text = String(value).trim();
+  const isoDateOnly = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoDateOnly) {
+    const date = new Date(Number(isoDateOnly[1]), Number(isoDateOnly[2]) - 1, Number(isoDateOnly[3]));
+    return Number.isNaN(date.getTime()) ? value : date;
+  }
   const br = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
   if (br) {
     const year = br[3].length === 2 ? Number(`20${br[3]}`) : Number(br[3]);
@@ -247,7 +266,7 @@ function normalizeRecord(raw) {
   ["valorChargeback", "valorTaxa"].forEach((field) => {
     if (field in record) record[field] = parseMoney(record[field]);
   });
-  ["dataTransacao", "dataAberturaChargeback", "prazoContestacao", "dataEnvioCliente", "dataAnalise"].forEach((field) => {
+  ["dataTransacao", "dataAberturaChargeback", "prazoContestacao", "dataEnvioCliente", "dataFaturamento", "dataAnalise"].forEach((field) => {
     if (field in record) record[field] = parseDate(record[field]);
   });
   return record;
@@ -319,9 +338,67 @@ function classifyRow(row) {
     pendencias: pendencies.join("; "),
     proximaAcao: chooseNextAction(row, classification, pendencies, status),
     statusPrazo: status,
+    statusVtex: row.statusVtex || row.statusPedido || "",
+    dataFaturamento: row.dataFaturamento || "",
     dataAnalise: new Date(),
-    origemClassificacao: "Automática - regras locais",
+    origemClassificacao: row.origemClassificacao || "Automática - regras locais",
   };
+}
+
+function normalizeVtexRecord(data) {
+  return classifyRow({
+    id: crypto.randomUUID(),
+    nsu: data.nsu || data.lookup || "",
+    idInterno: data.idInterno || "",
+    prazoContestacao: parseDate(data.prazoContestacao),
+    dataFaturamento: parseDate(data.dataFaturamento),
+    dataTransacao: parseDate(data.dataTransacao),
+    dataAberturaChargeback: parseDate(data.dataAberturaChargeback),
+    valorChargeback: parseMoney(data.valorChargeback),
+    bandeira: data.bandeira || "",
+    transportadora: data.transportadora || "",
+    numeroRastreio: data.numeroRastreio || "",
+    retornoAprovacao: data.retornoAprovacao || data.statusPedido || "",
+    statusVtex: data.statusPedido || "",
+    obs: data.obs || "",
+    origemClassificacao: data.origemClassificacao || "VTEX + regras locais",
+  });
+}
+
+async function lookupVtexOrder() {
+  const term = els.vtexOrderInput.value.trim();
+  if (!term) {
+    showToast("Informe o pedido ou NSU para consultar na VTEX.");
+    return;
+  }
+  els.vtexLookupButton.disabled = true;
+  els.vtexLookupStatus.textContent = "Consultando VTEX...";
+  try {
+    const response = await fetch(`/api/vtex-order?orderId=${encodeURIComponent(term)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Não foi possível consultar a VTEX.");
+    const nextRow = normalizeVtexRecord(data);
+    const existingIndex = state.rows.findIndex((row) => {
+      return (
+        (nextRow.idInterno && row.idInterno === nextRow.idInterno) ||
+        (nextRow.nsu && row.nsu === nextRow.nsu)
+      );
+    });
+    if (existingIndex >= 0) {
+      state.rows[existingIndex] = { ...state.rows[existingIndex], ...nextRow, id: state.rows[existingIndex].id };
+    } else {
+      state.rows.unshift(nextRow);
+    }
+    updateFilterOptions();
+    render();
+    els.vtexLookupStatus.textContent = `Pedido ${nextRow.idInterno || term} carregado da VTEX.`;
+    showToast("Dados da VTEX adicionados à base.");
+  } catch (error) {
+    els.vtexLookupStatus.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    els.vtexLookupButton.disabled = false;
+  }
 }
 
 function classifyAll() {
@@ -482,7 +559,7 @@ function renderTable() {
 }
 
 function displayValue(field, value) {
-  if (["dataTransacao", "dataAberturaChargeback", "prazoContestacao", "dataEnvioCliente", "dataAnalise"].includes(field)) return formatDate(value);
+  if (["dataTransacao", "dataAberturaChargeback", "prazoContestacao", "dataEnvioCliente", "dataFaturamento", "dataAnalise"].includes(field)) return formatDate(value);
   if (["valorChargeback", "valorTaxa"].includes(field)) return formatCurrency(value);
   return value ?? "";
 }
@@ -553,12 +630,14 @@ function renderDrawer() {
     ["Data da transação", formatDate(row.dataTransacao)],
     ["Abertura chargeback", formatDate(row.dataAberturaChargeback)],
     ["Prazo contestação", formatDate(row.prazoContestacao)],
+    ["Data faturamento", formatDate(row.dataFaturamento)],
     ["Valor chargeback", formatCurrency(row.valorChargeback)],
     ["Bandeira", row.bandeira],
     ["Transportadora", row.transportadora],
     ["Número do rastreio", row.numeroRastreio],
     ["Data envio cliente", formatDate(row.dataEnvioCliente)],
     ["Retorno aprovação", row.retornoAprovacao],
+    ["Status VTEX", row.statusVtex],
     ["Motivo de recusa", row.motivoRecusa],
     ["Risco de perda", row.risco],
   ];
@@ -576,6 +655,9 @@ function renderDrawer() {
   els.drawerAction.value = row.proximaAcao || nextActions[0];
   els.drawerObs.value = row.obs || "";
   els.drawerResponsible.value = row.aprovacaoPorQuem || "";
+  els.drawerEmailTo.value = localStorage.getItem("chargebackEmailTo") || "";
+  els.drawerEvidenceFiles.value = "";
+  state.selectedEvidenceFiles = [];
 }
 
 function setBadge(element, value, field) {
@@ -613,6 +695,120 @@ function evidenceList(row) {
   if (row.classificacaoIa === "Fraude") evidence.push("Documentação de defesa contra fraude");
   if (row.classificacaoIa === "Taxa/Bandeira") evidence.push("Conferência financeira de taxa/bandeira");
   return evidence;
+}
+
+function buildEmailTemplate(row) {
+  const subject = `Solicitação de chargeback - Pedido ${row.idInterno || "sem ID"} / NSU ${row.nsu || "sem NSU"}`;
+  const pendencies = String(row.pendencias || "")
+    .split(";")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const body = [
+    "Prezados,",
+    "",
+    "Segue solicitação de análise/contestação de chargeback com as evidências do pedido.",
+    "",
+    `Pedido/ID interno: ${row.idInterno || ""}`,
+    `NSU: ${row.nsu || ""}`,
+    `Status VTEX: ${row.statusVtex || row.retornoAprovacao || ""}`,
+    `Data da transação: ${formatDate(row.dataTransacao)}`,
+    `Data de faturamento: ${formatDate(row.dataFaturamento)}`,
+    `Prazo de contestação: ${formatDate(row.prazoContestacao)}`,
+    `Valor contestado: ${formatCurrency(row.valorChargeback)}`,
+    `Bandeira: ${row.bandeira || ""}`,
+    `Transportadora: ${row.transportadora || ""}`,
+    `Número de rastreio: ${row.numeroRastreio || ""}`,
+    `Classificação: ${row.classificacaoIa || ""}`,
+    `Risco: ${row.risco || ""}`,
+    `Próxima ação: ${row.proximaAcao || ""}`,
+    "",
+    "Pendências encontradas:",
+    pendencies.length ? pendencies.map((item) => `- ${item}`).join("\n") : "- Nenhuma pendência encontrada.",
+    "",
+    "Evidências anexadas:",
+    state.selectedEvidenceFiles.length
+      ? state.selectedEvidenceFiles.map((file) => `- ${file.name}`).join("\n")
+      : "- Sem anexos adicionados nesta tela.",
+    "",
+    "Observação operacional:",
+    row.obs || "",
+    "",
+    "Atenciosamente,",
+    "Equipe de Chargeback",
+  ].join("\n");
+  return { subject, body };
+}
+
+async function copyEmailBody() {
+  const row = state.rows.find((item) => item.id === state.selectedId);
+  if (!row) return;
+  const { body } = buildEmailTemplate(row);
+  await navigator.clipboard.writeText(body);
+  showToast("Corpo do e-mail copiado.");
+}
+
+function base64Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary);
+}
+
+function wrapBase64(base64) {
+  return base64.match(/.{1,76}/g)?.join("\r\n") || "";
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function encodeHeader(value) {
+  return `=?UTF-8?B?${base64Utf8(value)}?=`;
+}
+
+async function downloadEmailDraft() {
+  const row = state.rows.find((item) => item.id === state.selectedId);
+  if (!row) return;
+  const to = els.drawerEmailTo.value.trim();
+  if (to) localStorage.setItem("chargebackEmailTo", to);
+  const { subject, body } = buildEmailTemplate(row);
+  const boundary = `chargeback_${Date.now()}`;
+  const lines = [
+    `To: ${to}`,
+    `Subject: ${encodeHeader(subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    wrapBase64(base64Utf8(body)),
+  ];
+
+  for (const file of state.selectedEvidenceFiles) {
+    const base64 = await fileToBase64(file);
+    lines.push(
+      `--${boundary}`,
+      `Content-Type: ${file.type || "application/octet-stream"}; name="${file.name}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${file.name}"`,
+      "",
+      wrapBase64(base64)
+    );
+  }
+
+  lines.push(`--${boundary}--`, "");
+  const filename = `chargeback_${row.idInterno || row.nsu || "caso"}.eml`.replace(/[\\/:*?"<>|]/g, "_");
+  downloadBlob(lines.join("\r\n"), filename, "message/rfc822");
+  showToast("E-mail padrão gerado com anexos.");
 }
 
 function startOfToday() {
@@ -689,6 +885,10 @@ function showToast(message) {
 }
 
 els.fileInput.addEventListener("change", (event) => importFile(event.target.files[0]));
+els.vtexLookupButton.addEventListener("click", lookupVtexOrder);
+els.vtexOrderInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") lookupVtexOrder();
+});
 els.classifyButton.addEventListener("click", classifyAll);
 els.exportXlsxButton.addEventListener("click", () => exportRows("xlsx"));
 els.exportCsvButton.addEventListener("click", () => exportRows("csv"));
@@ -733,6 +933,11 @@ els.drawerObs.addEventListener("change", () => {
 els.drawerResponsible.addEventListener("change", () => {
   if (state.selectedId) updateCell(state.selectedId, "aprovacaoPorQuem", els.drawerResponsible.value);
 });
+els.drawerEvidenceFiles.addEventListener("change", () => {
+  state.selectedEvidenceFiles = Array.from(els.drawerEvidenceFiles.files || []);
+});
+els.copyEmailButton.addEventListener("click", copyEmailBody);
+els.downloadEmailButton.addEventListener("click", downloadEmailDraft);
 
 updateFilterOptions();
 render();

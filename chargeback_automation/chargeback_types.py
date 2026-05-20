@@ -34,6 +34,8 @@ GENERATED_COLUMNS = [
     "Pendências",
     "Próxima ação",
     "Status prazo",
+    "Status VTEX",
+    "Data faturamento",
     "Data análise",
     "Origem classificação",
 ]
@@ -60,6 +62,8 @@ FIELD_TO_HEADER = {
     "pendencias": "Pendências",
     "proxima_acao": "Próxima ação",
     "status_prazo": "Status prazo",
+    "status_vtex": "Status VTEX",
+    "data_faturamento": "Data faturamento",
     "data_analise": "Data análise",
     "origem_classificacao": "Origem classificação",
 }
