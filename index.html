@@ -24,6 +24,52 @@
     </header>
 
     <main class="app-shell">
+      <section class="manual-panel" aria-label="Novo caso manual">
+        <div class="manual-title">
+          <h2>Novo caso manual</h2>
+          <p>Cadastre o chargeback sem depender da leitura de e-mail e siga o fluxo operacional pelo painel do caso.</p>
+        </div>
+        <div class="manual-grid">
+          <label>
+            <span>NSU / ID Transação</span>
+            <input id="manualNsu" type="text" />
+          </label>
+          <label>
+            <span>Tipo</span>
+            <select id="manualTipo">
+              <option value="Fraude">Fraude</option>
+              <option value="Desacordo Comercial">Desacordo Comercial</option>
+              <option value="Não contestar">Não contestar</option>
+            </select>
+          </label>
+          <label>
+            <span>Data chargeback</span>
+            <input id="manualDataChargeback" type="date" />
+          </label>
+          <label>
+            <span>Motivo</span>
+            <input id="manualMotivo" type="text" placeholder="Ex: fraude, atraso, cancelamento" />
+          </label>
+          <label>
+            <span>Pedido VTEX</span>
+            <input id="manualPedido" type="text" />
+          </label>
+          <label>
+            <span>Nome cliente</span>
+            <input id="manualCliente" type="text" />
+          </label>
+          <label>
+            <span>Seller / Loja</span>
+            <input id="manualSeller" type="text" />
+          </label>
+          <label>
+            <span>Valor chargeback</span>
+            <input id="manualValor" type="text" placeholder="R$ 0,00" />
+          </label>
+        </div>
+        <button id="manualCreateButton" class="button button-primary" type="button">Criar caso manual</button>
+      </section>
+
       <section class="vtex-panel" aria-label="Consulta VTEX">
         <div>
           <h2>Consulta VTEX</h2>
@@ -124,6 +170,11 @@
           </section>
 
           <section>
+            <h3>Fluxo operacional</h3>
+            <div id="drawerWorkflow" class="workflow-list"></div>
+          </section>
+
+          <section>
             <h3>Pendências encontradas</h3>
             <ul id="drawerPendencies" class="pendency-list"></ul>
           </section>
@@ -158,6 +209,22 @@
             <label>
               <span>Responsável/aprovação</span>
               <input id="drawerResponsible" type="text" />
+            </label>
+            <label>
+              <span>Contestado por CTC?</span>
+              <select id="drawerContested">
+                <option value=""></option>
+                <option value="Sim">Sim</option>
+                <option value="Não">Não</option>
+              </select>
+            </label>
+            <label>
+              <span>ID Signifyd</span>
+              <input id="drawerSignifydId" type="text" />
+            </label>
+            <label>
+              <span>Motivo de contato do cliente</span>
+              <input id="drawerCustomerReason" type="text" />
             </label>
           </section>
         </div>

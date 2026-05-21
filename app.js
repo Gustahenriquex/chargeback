@@ -1,16 +1,23 @@
 const originalColumns = [
   "NSU",
+  "Tipo Chargeback",
   "Data da Transação",
   "Data Abertura de Chargeback",
   "Prazo de contestação",
   "Valor do Chargeback",
+  "Valor do Pedido",
   "Bandeira",
   "Valor taxa",
+  "Nome do Cliente",
   "Transportadora",
   "Número do Rastreio",
   "Data de envio para o cliente",
   "Retorno de aprovação",
   "ID interno",
+  "Seller / Loja",
+  "ID Signifyd",
+  "Contestado por CTC",
+  "Motivo contato cliente",
   "Motivo de recusa",
   "Obs",
   "Ação",
@@ -20,6 +27,7 @@ const originalColumns = [
 const generatedColumns = [
   "Classificação IA",
   "Risco",
+  "Plataforma",
   "Pendências",
   "Próxima ação",
   "Status prazo",
@@ -33,23 +41,31 @@ const allColumns = [...originalColumns, ...generatedColumns];
 
 const headerToField = {
   "NSU": "nsu",
+  "Tipo Chargeback": "tipoChargeback",
   "Data da Transação": "dataTransacao",
   "Data Abertura de Chargeback": "dataAberturaChargeback",
   "Prazo de contestação": "prazoContestacao",
   "Valor do Chargeback": "valorChargeback",
+  "Valor do Pedido": "valorPedido",
   "Bandeira": "bandeira",
   "Valor taxa": "valorTaxa",
+  "Nome do Cliente": "nomeCliente",
   "Transportadora": "transportadora",
   "Número do Rastreio": "numeroRastreio",
   "Data de envio para o cliente": "dataEnvioCliente",
   "Retorno de aprovação": "retornoAprovacao",
   "ID interno": "idInterno",
+  "Seller / Loja": "sellerLoja",
+  "ID Signifyd": "idSignifyd",
+  "Contestado por CTC": "contestadoCtc",
+  "Motivo contato cliente": "motivoContatoCliente",
   "Motivo de recusa": "motivoRecusa",
   "Obs": "obs",
   "Ação": "acao",
   "Aprovação por quem?": "aprovacaoPorQuem",
   "Classificação IA": "classificacaoIa",
   "Risco": "risco",
+  "Plataforma": "plataformaContestacao",
   "Pendências": "pendencias",
   "Próxima ação": "proximaAcao",
   "Status prazo": "statusPrazo",
@@ -63,23 +79,31 @@ const fieldToHeader = Object.fromEntries(Object.entries(headerToField).map(([hea
 
 const aliases = {
   nsu: ["nsu", "numero nsu", "codigo nsu"],
+  tipoChargeback: ["tipo chargeback", "tipo", "motivo chargeback", "fraude desacordo"],
   dataTransacao: ["data da transacao", "data transacao", "dt transacao", "data compra"],
   dataAberturaChargeback: ["data abertura de chargeback", "data de abertura de chargeback", "abertura chargeback", "data abertura contestacao"],
   prazoContestacao: ["prazo de contestacao", "prazo contestacao", "data limite", "limite contestacao", "vencimento contestacao"],
   valorChargeback: ["valor do chargeback", "valor chargeback", "valor contestado", "valor da contestacao"],
+  valorPedido: ["valor do pedido", "valor pedido", "total pedido"],
   bandeira: ["bandeira", "cartao bandeira", "bandeira cartao"],
   valorTaxa: ["valor taxa", "valor da taxa", "taxa", "fee"],
+  nomeCliente: ["nome do cliente", "cliente", "customer name"],
   transportadora: ["transportadora", "logistica", "carrier"],
   numeroRastreio: ["numero do rastreio", "rastreio", "codigo rastreio", "cod rastreio", "tracking", "tracking number"],
   dataEnvioCliente: ["data de envio para o cliente", "data envio cliente", "data envio", "envio cliente", "data postagem"],
   retornoAprovacao: ["retorno de aprovacao", "aprovacao", "retorno", "status aprovacao"],
   idInterno: ["id interno", "id", "pedido", "id pedido"],
+  sellerLoja: ["seller", "loja", "seller loja"],
+  idSignifyd: ["id signifyd", "signifyd", "codigo unico", "codigo signifyd"],
+  contestadoCtc: ["contestado por ctc", "contestado", "ctc"],
+  motivoContatoCliente: ["motivo contato cliente", "motivo de contato", "zendesk", "ocorrencia cliente"],
   motivoRecusa: ["motivo de recusa", "motivo recusa", "recusa", "motivo"],
   obs: ["obs", "observacao", "observacoes", "comentario"],
   acao: ["acao", "tratativa"],
   aprovacaoPorQuem: ["aprovacao por quem", "responsavel", "aprovador"],
   classificacaoIa: ["classificacao ia", "classificacao"],
   risco: ["risco"],
+  plataformaContestacao: ["plataforma", "plataforma contestacao", "plataforma de contestacao"],
   pendencias: ["pendencias"],
   proximaAcao: ["proxima acao", "acao recomendada"],
   statusPrazo: ["status prazo", "status do prazo"],
@@ -111,6 +135,11 @@ const nextActions = [
   "Encaminhar para financeiro",
   "Revisar motivo de recusa",
   "Aguardar retorno da adquirente",
+  "Contestar na Signifyd",
+  "Contestar na Pagar.me",
+  "Solicitar documento para loja",
+  "Consultar atendimento Zendesk",
+  "Acompanhar cancelamento/devolucao",
   "Encerrar caso",
 ];
 
@@ -120,6 +149,10 @@ const editableFields = new Set([
   "obs",
   "acao",
   "aprovacaoPorQuem",
+  "tipoChargeback",
+  "idSignifyd",
+  "contestadoCtc",
+  "motivoContatoCliente",
   "classificacaoIa",
   "risco",
   "proximaAcao",
@@ -150,6 +183,15 @@ const els = {
   tableWrap: document.getElementById("tableWrap"),
   emptyState: document.getElementById("emptyState"),
   toast: document.getElementById("toast"),
+  manualNsu: document.getElementById("manualNsu"),
+  manualTipo: document.getElementById("manualTipo"),
+  manualDataChargeback: document.getElementById("manualDataChargeback"),
+  manualMotivo: document.getElementById("manualMotivo"),
+  manualPedido: document.getElementById("manualPedido"),
+  manualCliente: document.getElementById("manualCliente"),
+  manualSeller: document.getElementById("manualSeller"),
+  manualValor: document.getElementById("manualValor"),
+  manualCreateButton: document.getElementById("manualCreateButton"),
   vtexOrderInput: document.getElementById("vtexOrderInput"),
   vtexLookupButton: document.getElementById("vtexLookupButton"),
   vtexLookupStatus: document.getElementById("vtexLookupStatus"),
@@ -166,6 +208,7 @@ const els = {
   drawerVtexItems: document.getElementById("drawerVtexItems"),
   drawerVtexJson: document.getElementById("drawerVtexJson"),
   drawerChecklist: document.getElementById("drawerChecklist"),
+  drawerWorkflow: document.getElementById("drawerWorkflow"),
   drawerPendencies: document.getElementById("drawerPendencies"),
   drawerEvidence: document.getElementById("drawerEvidence"),
   drawerEmailTo: document.getElementById("drawerEmailTo"),
@@ -176,6 +219,9 @@ const els = {
   drawerAction: document.getElementById("drawerAction"),
   drawerObs: document.getElementById("drawerObs"),
   drawerResponsible: document.getElementById("drawerResponsible"),
+  drawerContested: document.getElementById("drawerContested"),
+  drawerSignifydId: document.getElementById("drawerSignifydId"),
+  drawerCustomerReason: document.getElementById("drawerCustomerReason"),
 };
 
 const filterElements = {
@@ -263,13 +309,77 @@ function formatCurrency(value) {
   return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function addDaysToDate(value, days) {
+  const date = parseDate(value);
+  if (!(date instanceof Date)) return "";
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function normalizeChargebackType(value) {
+  const text = normalizeText(value);
+  if (text.includes("desacordo") || text.includes("comercial")) return "Desacordo Comercial";
+  if (text.includes("nao contestar") || text.includes("não contestar") || text.includes("cancelado") || text.includes("extraviado") || text.includes("devolvido")) return "Não contestar";
+  if (text.includes("fraude") || text.includes("nao reconhe") || text.includes("não reconhe")) return "Fraude";
+  return value || "";
+}
+
+function deadlineForType(type, chargebackDate) {
+  const normalized = normalizeChargebackType(type);
+  if (normalized === "Fraude") return addDaysToDate(chargebackDate, 7);
+  if (normalized === "Desacordo Comercial") return addDaysToDate(chargebackDate, 10);
+  return "";
+}
+
+function platformForType(type) {
+  const normalized = normalizeChargebackType(type);
+  if (normalized === "Fraude") return "Signifyd";
+  if (normalized === "Desacordo Comercial") return "Pagar.me";
+  if (normalized === "Não contestar") return "Acompanhamento interno";
+  return "";
+}
+
+function classifyOperationalRow(row) {
+  const type = normalizeChargebackType(row.tipoChargeback);
+  const base = classifyRow({
+    ...row,
+    tipoChargeback: type,
+    prazoContestacao: row.prazoContestacao || deadlineForType(type, row.dataAberturaChargeback),
+  });
+  const pending = String(base.pendencias || "")
+    .split(";")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!hasValue(base.idInterno)) pending.push("Pedido VTEX nao informado");
+  if (type === "Fraude" && !hasValue(base.idSignifyd)) pending.push("ID Signifyd pendente");
+  if (type === "Desacordo Comercial" && !hasValue(base.motivoContatoCliente)) {
+    pending.push("Motivo de contato do cliente pendente");
+  }
+
+  const actionByType = {
+    Fraude: "Contestar na Signifyd",
+    "Desacordo Comercial": "Contestar na Pagar.me",
+    "Nao contestar": "Acompanhar cancelamento/devolucao",
+  };
+  const platform = base.plataformaContestacao || platformForType(type);
+  return {
+    ...base,
+    tipoChargeback: type || base.tipoChargeback || "",
+    plataformaContestacao: platform,
+    pendencias: [...new Set(pending)].join("; "),
+    risco: normalizeText(type).includes("contestar") ? "Baixo" : base.risco,
+    proximaAcao: normalizeText(type).includes("contestar") ? "Acompanhar cancelamento/devolucao" : (actionByType[type] || base.proximaAcao),
+  };
+}
+
 function normalizeRecord(raw) {
   const record = { id: crypto.randomUUID() };
   for (const [header, value] of Object.entries(raw)) {
     const field = fieldForHeader(header);
     if (field) record[field] = value;
   }
-  ["valorChargeback", "valorTaxa"].forEach((field) => {
+  ["valorChargeback", "valorPedido", "valorTaxa"].forEach((field) => {
     if (field in record) record[field] = parseMoney(record[field]);
   });
   ["dataTransacao", "dataAberturaChargeback", "prazoContestacao", "dataEnvioCliente", "dataFaturamento", "dataAnalise"].forEach((field) => {
@@ -302,6 +412,10 @@ function deadlineStatus(value) {
 }
 
 function classifyCategory(row) {
+  const type = normalizeChargebackType(row.tipoChargeback);
+  if (type === "Fraude") return "Fraude";
+  if (type === "Desacordo Comercial") return "Experiência do Cliente";
+  if (type === "Não contestar") return "Sem Classificação";
   const blob = normalizeText([row.obs, row.motivoRecusa, row.acao, row.retornoAprovacao].filter(hasValue).join(" "));
   if (containsAny(blob, ["fraude", "cliente desconhece", "compra nao reconhecida", "chargeback indevido"])) return "Fraude";
   if (containsAny(blob, ["reembolso", "estorno", "compensacao", "ajuste financeiro"])) return "Compensação";
@@ -313,6 +427,10 @@ function classifyCategory(row) {
 }
 
 function chooseNextAction(row, classification, pendencies, status) {
+  const type = normalizeChargebackType(row.tipoChargeback);
+  if (type === "Fraude") return "Contestar na Signifyd";
+  if (type === "Desacordo Comercial") return "Contestar na Pagar.me";
+  if (type === "Não contestar") return "Acompanhar cancelamento/devolucao";
   if (hasValue(row.motivoRecusa)) return "Revisar motivo de recusa";
   if (pendencies.includes("Sem data de envio") || pendencies.includes("Sem rastreio informado")) return "Solicitar comprovante de entrega";
   if (pendencies.includes("Transportadora não informada")) return "Validar pedido no OMS";
@@ -352,7 +470,7 @@ function classifyRow(row) {
 }
 
 function normalizeVtexRecord(data) {
-  return classifyRow({
+  return classifyOperationalRow({
     id: crypto.randomUUID(),
     nsu: data.nsu || data.lookup || "",
     idInterno: data.idInterno || "",
@@ -361,11 +479,14 @@ function normalizeVtexRecord(data) {
     dataTransacao: parseDate(data.dataTransacao),
     dataAberturaChargeback: parseDate(data.dataAberturaChargeback),
     valorChargeback: parseMoney(data.valorChargeback),
+    valorPedido: parseMoney(data.valorChargeback),
     bandeira: data.bandeira || "",
+    nomeCliente: data.customer?.name || "",
     transportadora: data.transportadora || "",
     numeroRastreio: data.numeroRastreio || "",
     retornoAprovacao: data.retornoAprovacao || data.statusPedido || "",
     statusVtex: data.statusPedido || "",
+    sellerLoja: Array.isArray(data.sellers) ? data.sellers.map((seller) => seller.name || seller.id).filter(Boolean).join(", ") : "",
     obs: data.obs || "",
     origemClassificacao: data.origemClassificacao || "VTEX + regras locais",
     vtexAdminUrl: data.adminOrderUrl || "",
@@ -374,8 +495,43 @@ function normalizeVtexRecord(data) {
     vtexPayment: data.payment || null,
     vtexItems: Array.isArray(data.items) ? data.items : [],
     vtexTotals: Array.isArray(data.totals) ? data.totals : [],
+    vtexSellers: Array.isArray(data.sellers) ? data.sellers : [],
     vtexRaw: data.raw || null,
   });
+}
+
+function createManualCase() {
+  const nsu = els.manualNsu.value.trim();
+  const pedido = els.manualPedido.value.trim();
+  const type = normalizeChargebackType(els.manualTipo.value);
+  const chargebackDate = parseDate(els.manualDataChargeback.value);
+  if (!nsu && !pedido) {
+    showToast("Informe pelo menos NSU ou pedido VTEX.");
+    return;
+  }
+  const row = classifyOperationalRow({
+    id: crypto.randomUUID(),
+    nsu,
+    tipoChargeback: type,
+    dataAberturaChargeback: chargebackDate,
+    prazoContestacao: deadlineForType(type, chargebackDate),
+    valorChargeback: parseMoney(els.manualValor.value),
+    valorPedido: parseMoney(els.manualValor.value),
+    idInterno: pedido,
+    nomeCliente: els.manualCliente.value.trim(),
+    sellerLoja: els.manualSeller.value.trim(),
+    motivoRecusa: "",
+    obs: els.manualMotivo.value.trim(),
+    origemClassificacao: "Manual + regras locais",
+  });
+  state.rows.unshift(row);
+  updateFilterOptions();
+  render();
+  openDrawer(row.id);
+  [els.manualNsu, els.manualDataChargeback, els.manualMotivo, els.manualPedido, els.manualCliente, els.manualSeller, els.manualValor].forEach((input) => {
+    input.value = "";
+  });
+  showToast("Caso manual criado.");
 }
 
 async function lookupVtexOrder() {
@@ -400,7 +556,12 @@ async function lookupVtexOrder() {
     let openedId = nextRow.id;
     if (existingIndex >= 0) {
       openedId = state.rows[existingIndex].id;
-      state.rows[existingIndex] = { ...state.rows[existingIndex], ...nextRow, id: openedId };
+      const existing = state.rows[existingIndex];
+      const merged = { ...existing, ...nextRow, id: openedId };
+      ["tipoChargeback", "dataAberturaChargeback", "valorChargeback", "valorTaxa", "idSignifyd", "contestadoCtc", "motivoContatoCliente", "obs"].forEach((field) => {
+        if (!hasValue(nextRow[field]) && hasValue(existing[field])) merged[field] = existing[field];
+      });
+      state.rows[existingIndex] = classifyOperationalRow(merged);
     } else {
       state.rows.unshift(nextRow);
     }
@@ -418,7 +579,7 @@ async function lookupVtexOrder() {
 }
 
 function classifyAll() {
-  state.rows = state.rows.map(classifyRow);
+  state.rows = state.rows.map(classifyOperationalRow);
   render();
   showToast("Classificação automática concluída.");
 }
@@ -438,7 +599,7 @@ async function importFile(file) {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       records = XLSX.utils.sheet_to_json(sheet, { defval: "" }).map(normalizeRecord).filter((row) => !rowIsEmpty(row));
     }
-    state.rows = records.map(classifyRow);
+    state.rows = records.map(classifyOperationalRow);
     updateFilterOptions();
     render();
     showToast(`${records.length} caso(s) importado(s).`);
@@ -576,7 +737,7 @@ function renderTable() {
 
 function displayValue(field, value) {
   if (["dataTransacao", "dataAberturaChargeback", "prazoContestacao", "dataEnvioCliente", "dataFaturamento", "dataAnalise"].includes(field)) return formatDate(value);
-  if (["valorChargeback", "valorTaxa"].includes(field)) return formatCurrency(value);
+  if (["valorChargeback", "valorPedido", "valorTaxa"].includes(field)) return formatCurrency(value);
   return value ?? "";
 }
 
@@ -675,12 +836,18 @@ function renderDrawer() {
 
   const details = [
     ["NSU", row.nsu],
+    ["Tipo chargeback", row.tipoChargeback],
+    ["Plataforma", row.plataformaContestacao],
     ["ID interno", row.idInterno],
+    ["ID Signifyd", row.idSignifyd],
+    ["Nome cliente", row.nomeCliente],
+    ["Seller / Loja", row.sellerLoja],
     ["Data da transação", formatDate(row.dataTransacao)],
     ["Abertura chargeback", formatDate(row.dataAberturaChargeback)],
     ["Prazo contestação", formatDate(row.prazoContestacao)],
     ["Data faturamento", formatDate(row.dataFaturamento)],
     ["Valor chargeback", formatCurrency(row.valorChargeback)],
+    ["Valor pedido", formatCurrency(row.valorPedido)],
     ["Bandeira", row.bandeira],
     ["Transportadora", row.transportadora],
     ["Número do rastreio", row.numeroRastreio],
@@ -688,6 +855,8 @@ function renderDrawer() {
     ["Retorno aprovação", row.retornoAprovacao],
     ["Status VTEX", row.statusVtex],
     ["Motivo de recusa", row.motivoRecusa],
+    ["Motivo contato cliente", row.motivoContatoCliente],
+    ["Contestado por CTC", row.contestadoCtc],
     ["Risco de perda", row.risco],
   ];
   els.drawerDetails.innerHTML = details.map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value || "")}</dd>`).join("");
@@ -696,15 +865,21 @@ function renderDrawer() {
   els.drawerChecklist.innerHTML = checklist(row)
     .map((item) => `<div class="check-item"><div><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail)}</small></div><span class="badge ${item.ok ? "badge-green" : "badge-red"}">${item.ok ? "Sim" : "Não"}</span></div>`)
     .join("");
+  els.drawerWorkflow.innerHTML = workflowForCase(row)
+    .map((item) => `<div class="workflow-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.body)}</span></div>`)
+    .join("");
 
   const pendencies = String(row.pendencias || "").split(";").map((item) => item.trim()).filter(Boolean);
   els.drawerPendencies.innerHTML = pendencies.length ? pendencies.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>Nenhuma pendência encontrada.</li>";
-  els.drawerEvidence.innerHTML = evidenceList(row).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  els.drawerEvidence.innerHTML = evidenceListForCase(row).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 
   els.drawerAction.innerHTML = nextActions.map((action) => `<option value="${escapeHtml(action)}">${escapeHtml(action)}</option>`).join("");
   els.drawerAction.value = row.proximaAcao || nextActions[0];
   els.drawerObs.value = row.obs || "";
   els.drawerResponsible.value = row.aprovacaoPorQuem || "";
+  els.drawerContested.value = row.contestadoCtc || "";
+  els.drawerSignifydId.value = row.idSignifyd || "";
+  els.drawerCustomerReason.value = row.motivoContatoCliente || "";
   els.drawerEmailTo.value = localStorage.getItem("chargebackEmailTo") || "";
   els.drawerEvidenceFiles.value = "";
   renderDocumentList(row.id);
@@ -819,6 +994,36 @@ function checklist(row) {
   ].map(([label, ok, detail]) => ({ label, ok, detail }));
 }
 
+function workflowForCase(row) {
+  const type = normalizeChargebackType(row.tipoChargeback);
+  if (type === "Fraude") {
+    return [
+      { title: "Plataforma", body: "Contestar na Signifyd." },
+      { title: "Prazo", body: "7 dias corridos a partir do recebimento/data do chargeback." },
+      { title: "Localizar pedido", body: "Use o codigo unico da VTEX; se houver divisao de pedido, use o primeiro com final -01." },
+      { title: "Documentos", body: "Anexe endereco de entrega e comprovante de entrega, preferencialmente JPG quando for imagem." },
+      { title: "Dados obrigatorios", body: "Rastreio, transportadora, numero/data/motivo/valor do chargeback e valor da taxa." },
+      { title: "Depois do envio", body: "Preencha data/status, ID Signifyd e marque Contestado por CTC = Sim." },
+    ];
+  }
+  if (type === "Desacordo Comercial") {
+    return [
+      { title: "Plataforma", body: "Contestar na Pagar.me." },
+      { title: "Prazo", body: "10 dias corridos para contestacao." },
+      { title: "Atendimento", body: "Consulte Zendesk/atendimento e registre o motivo de contato do cliente." },
+      { title: "Documentos", body: "Comprovante de entrega, dados do pedido, nota fiscal, explicacao da ocorrencia e comprovante de estorno se houver." },
+      { title: "Depois do envio", body: "Anexe os arquivos na Pagar.me e marque Contestado por CTC = Sim." },
+    ];
+  }
+  if (normalizeText(type).includes("contestar")) {
+    return [
+      { title: "Quando nao contestar", body: "Casos cancelados, extraviados, devolvidos ou em processo de devolucao." },
+      { title: "Acao", body: "Acompanhe diariamente para garantir produto/ressarcimento e evitar perda dupla." },
+    ];
+  }
+  return [{ title: "Definir tipo", body: "Escolha Fraude, Desacordo Comercial ou Nao contestar para exibir o fluxo correto." }];
+}
+
 function evidenceList(row) {
   const evidence = ["Comprovante da transação", "Pedido/ID interno validado no OMS"];
   if (!hasValue(row.numeroRastreio)) evidence.push("Número de rastreio");
@@ -827,6 +1032,15 @@ function evidenceList(row) {
   if (row.classificacaoIa === "Fraude") evidence.push("Documentação de defesa contra fraude");
   if (row.classificacaoIa === "Taxa/Bandeira") evidence.push("Conferência financeira de taxa/bandeira");
   return evidence;
+}
+
+function evidenceListForCase(row) {
+  const base = evidenceList(row);
+  const type = normalizeChargebackType(row.tipoChargeback);
+  const extra = [];
+  if (type === "Fraude") extra.push("Endereco de entrega", "Comprovante de entrega", "Codigo de rastreio", "ID Signifyd");
+  if (type === "Desacordo Comercial") extra.push("Nota fiscal", "Explicacao da ocorrencia", "Comprovante de estorno se houver", "Motivo de contato do cliente");
+  return [...new Set([...base, ...extra])];
 }
 
 function buildEmailTemplate(row) {
@@ -843,11 +1057,16 @@ function buildEmailTemplate(row) {
     "",
     `Pedido/ID interno: ${row.idInterno || ""}`,
     `NSU: ${row.nsu || ""}`,
+    `Tipo chargeback: ${row.tipoChargeback || ""}`,
+    `Plataforma: ${row.plataformaContestacao || ""}`,
+    `Nome cliente: ${row.nomeCliente || ""}`,
+    `Seller/Loja: ${row.sellerLoja || ""}`,
     `Status VTEX: ${row.statusVtex || row.retornoAprovacao || ""}`,
     `Data da transação: ${formatDate(row.dataTransacao)}`,
     `Data de faturamento: ${formatDate(row.dataFaturamento)}`,
     `Prazo de contestação: ${formatDate(row.prazoContestacao)}`,
     `Valor contestado: ${formatCurrency(row.valorChargeback)}`,
+    `Valor pedido: ${formatCurrency(row.valorPedido)}`,
     `Bandeira: ${row.bandeira || ""}`,
     `Transportadora: ${row.transportadora || ""}`,
     `Número de rastreio: ${row.numeroRastreio || ""}`,
@@ -1019,6 +1238,7 @@ function showToast(message) {
 }
 
 els.fileInput.addEventListener("change", (event) => importFile(event.target.files[0]));
+els.manualCreateButton.addEventListener("click", createManualCase);
 els.vtexLookupButton.addEventListener("click", lookupVtexOrder);
 els.vtexOrderInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") lookupVtexOrder();
@@ -1066,6 +1286,15 @@ els.drawerObs.addEventListener("change", () => {
 });
 els.drawerResponsible.addEventListener("change", () => {
   if (state.selectedId) updateCell(state.selectedId, "aprovacaoPorQuem", els.drawerResponsible.value);
+});
+els.drawerContested.addEventListener("change", () => {
+  if (state.selectedId) updateCell(state.selectedId, "contestadoCtc", els.drawerContested.value);
+});
+els.drawerSignifydId.addEventListener("change", () => {
+  if (state.selectedId) updateCell(state.selectedId, "idSignifyd", els.drawerSignifydId.value);
+});
+els.drawerCustomerReason.addEventListener("change", () => {
+  if (state.selectedId) updateCell(state.selectedId, "motivoContatoCliente", els.drawerCustomerReason.value);
 });
 els.drawerEvidenceFiles.addEventListener("change", () => {
   if (!state.selectedId) return;

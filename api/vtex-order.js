@@ -214,6 +214,15 @@ function summarizeTotals(order) {
     : [];
 }
 
+function summarizeSellers(order) {
+  return Array.isArray(order?.sellers)
+    ? order.sellers.map((seller) => ({
+        id: seller.id || "",
+        name: seller.name || "",
+      }))
+    : [];
+}
+
 function extractShipping(order) {
   const packages = getPackages(order);
   const firstPackage = packages[0] || {};
@@ -274,6 +283,7 @@ function normalizeOrder(order, lookup) {
     payment: summarizePayment(order),
     items: summarizeItems(order),
     totals: summarizeTotals(order),
+    sellers: summarizeSellers(order),
     raw: {
       order,
       extracted: {
