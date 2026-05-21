@@ -97,6 +97,10 @@ function asCurrencyNumber(cents) {
   return typeof cents === "number" ? cents / 100 : "";
 }
 
+function moneyFromCents(cents) {
+  return typeof cents === "number" ? cents / 100 : "";
+}
+
 function getPackages(order) {
   return Array.isArray(order?.packageAttachment?.packages)
     ? order.packageAttachment.packages
@@ -146,6 +150,70 @@ function extractPayment(order) {
   };
 }
 
+function summarizeItems(order) {
+  return Array.isArray(order?.items)
+    ? order.items.map((item) => ({
+        id: item.id || "",
+        refId: item.refId || "",
+        name: item.name || "",
+        skuName: item.skuName || "",
+        quantity: item.quantity || 0,
+        sellingPrice: moneyFromCents(item.sellingPrice),
+        listPrice: moneyFromCents(item.listPrice),
+        imageUrl: item.imageUrl || "",
+      }))
+    : [];
+}
+
+function summarizeClient(order) {
+  const client = order?.clientProfileData || {};
+  return {
+    name: [client.firstName, client.lastName].filter(Boolean).join(" "),
+    email: client.email || "",
+    document: client.document || "",
+    phone: client.phone || "",
+    corporateName: client.corporateName || "",
+  };
+}
+
+function summarizeAddress(order) {
+  const address = order?.shippingData?.address || {};
+  return {
+    receiverName: address.receiverName || "",
+    street: address.street || "",
+    number: address.number || "",
+    complement: address.complement || "",
+    neighborhood: address.neighborhood || "",
+    city: address.city || "",
+    state: address.state || "",
+    postalCode: address.postalCode || "",
+    country: address.country || "",
+  };
+}
+
+function summarizePayment(order) {
+  const transaction = order?.paymentData?.transactions?.[0] || {};
+  const payment = transaction?.payments?.[0] || {};
+  return {
+    paymentSystemName: payment.paymentSystemName || "",
+    group: payment.group || "",
+    installments: payment.installments || "",
+    value: moneyFromCents(payment.value),
+    tid: firstNonEmpty(payment.tid, payment.connectorResponses?.tid),
+    nsu: firstNonEmpty(payment.nsu, payment.connectorResponses?.nsu, payment.connectorResponses?.NSU),
+  };
+}
+
+function summarizeTotals(order) {
+  return Array.isArray(order?.totals)
+    ? order.totals.map((total) => ({
+        id: total.id || "",
+        name: total.name || "",
+        value: moneyFromCents(total.value),
+      }))
+    : [];
+}
+
 function extractShipping(order) {
   const packages = getPackages(order);
   const firstPackage = packages[0] || {};
@@ -182,10 +250,12 @@ function normalizeOrder(order, lookup) {
   const payment = extractPayment(order);
   const shipping = extractShipping(order);
   const deadline = addDays(invoiceDate, 10);
+  const account = env("VTEX_ACCOUNT");
+  const orderId = firstNonEmpty(order?.orderId, order?.sellerOrderId, order?.sequence);
   return {
     lookup,
     nsu: payment.nsu || lookup,
-    idInterno: firstNonEmpty(order?.orderId, order?.sellerOrderId, order?.sequence),
+    idInterno: orderId,
     prazoContestacao: isoDate(deadline),
     dataFaturamento: isoDate(invoiceDate),
     dataTransacao: isoDate(firstValidDate(order?.creationDate, order?.authorizedDate)),
@@ -198,14 +268,18 @@ function normalizeOrder(order, lookup) {
     retornoAprovacao: firstNonEmpty(order?.statusDescription, order?.status),
     obs: `Dados consultados na VTEX em ${new Date().toLocaleString("pt-BR")}.`,
     origemClassificacao: "VTEX + regras locais",
+    adminOrderUrl: order?.orderId && account ? `https://${account}.myvtex.com/admin/orders/${order.orderId}` : "",
+    customer: summarizeClient(order),
+    address: summarizeAddress(order),
+    payment: summarizePayment(order),
+    items: summarizeItems(order),
+    totals: summarizeTotals(order),
     raw: {
-      orderId: order?.orderId,
-      sequence: order?.sequence,
-      status: order?.status,
-      statusDescription: order?.statusDescription,
-      invoicedDate: order?.invoicedDate,
-      trackingSource: shipping.numeroRastreio,
-      tid: payment.tid,
+      order,
+      extracted: {
+        trackingSource: shipping.numeroRastreio,
+        tid: payment.tid,
+      },
     },
   };
 }

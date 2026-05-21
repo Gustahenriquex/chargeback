@@ -105,6 +105,19 @@
             <dl id="drawerDetails" class="detail-grid"></dl>
           </section>
 
+          <section id="drawerVtexSection" class="vtex-order-section" hidden>
+            <div class="section-title-row">
+              <h3>Pedido VTEX completo</h3>
+              <a id="drawerVtexOpenLink" class="button button-ghost" href="#" target="_blank" rel="noreferrer">Abrir na VTEX</a>
+            </div>
+            <dl id="drawerVtexSummary" class="detail-grid"></dl>
+            <div id="drawerVtexItems" class="mini-table"></div>
+            <details class="raw-json-box">
+              <summary>Ver JSON completo retornado pela VTEX</summary>
+              <pre id="drawerVtexJson"></pre>
+            </details>
+          </section>
+
           <section>
             <h3>Checklist operacional</h3>
             <div id="drawerChecklist" class="checklist"></div>
@@ -127,8 +140,9 @@
             </label>
             <label>
               <span>Fotos/evidências</span>
-              <input id="drawerEvidenceFiles" type="file" multiple accept="image/*,.pdf,.png,.jpg,.jpeg" />
+              <input id="drawerEvidenceFiles" type="file" multiple accept="image/*,.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip" />
             </label>
+            <div id="drawerDocumentList" class="document-list"></div>
             <div class="email-actions">
               <button id="copyEmailButton" class="button" type="button">Copiar corpo do e-mail</button>
               <button id="downloadEmailButton" class="button button-primary" type="button">Baixar e-mail .eml</button>

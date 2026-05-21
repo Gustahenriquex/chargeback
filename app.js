@@ -136,7 +136,7 @@ const state = {
     risco: "",
     statusPrazo: "",
   },
-  selectedEvidenceFiles: [],
+  attachmentsByRow: new Map(),
 };
 
 const els = {
@@ -160,11 +160,17 @@ const els = {
   drawerRisk: document.getElementById("drawerRisk"),
   drawerDeadline: document.getElementById("drawerDeadline"),
   drawerDetails: document.getElementById("drawerDetails"),
+  drawerVtexSection: document.getElementById("drawerVtexSection"),
+  drawerVtexOpenLink: document.getElementById("drawerVtexOpenLink"),
+  drawerVtexSummary: document.getElementById("drawerVtexSummary"),
+  drawerVtexItems: document.getElementById("drawerVtexItems"),
+  drawerVtexJson: document.getElementById("drawerVtexJson"),
   drawerChecklist: document.getElementById("drawerChecklist"),
   drawerPendencies: document.getElementById("drawerPendencies"),
   drawerEvidence: document.getElementById("drawerEvidence"),
   drawerEmailTo: document.getElementById("drawerEmailTo"),
   drawerEvidenceFiles: document.getElementById("drawerEvidenceFiles"),
+  drawerDocumentList: document.getElementById("drawerDocumentList"),
   copyEmailButton: document.getElementById("copyEmailButton"),
   downloadEmailButton: document.getElementById("downloadEmailButton"),
   drawerAction: document.getElementById("drawerAction"),
@@ -362,6 +368,13 @@ function normalizeVtexRecord(data) {
     statusVtex: data.statusPedido || "",
     obs: data.obs || "",
     origemClassificacao: data.origemClassificacao || "VTEX + regras locais",
+    vtexAdminUrl: data.adminOrderUrl || "",
+    vtexCustomer: data.customer || null,
+    vtexAddress: data.address || null,
+    vtexPayment: data.payment || null,
+    vtexItems: Array.isArray(data.items) ? data.items : [],
+    vtexTotals: Array.isArray(data.totals) ? data.totals : [],
+    vtexRaw: data.raw || null,
   });
 }
 
@@ -384,13 +397,16 @@ async function lookupVtexOrder() {
         (nextRow.nsu && row.nsu === nextRow.nsu)
       );
     });
+    let openedId = nextRow.id;
     if (existingIndex >= 0) {
-      state.rows[existingIndex] = { ...state.rows[existingIndex], ...nextRow, id: state.rows[existingIndex].id };
+      openedId = state.rows[existingIndex].id;
+      state.rows[existingIndex] = { ...state.rows[existingIndex], ...nextRow, id: openedId };
     } else {
       state.rows.unshift(nextRow);
     }
     updateFilterOptions();
     render();
+    openDrawer(openedId);
     els.vtexLookupStatus.textContent = `Pedido ${nextRow.idInterno || term} carregado da VTEX.`;
     showToast("Dados da VTEX adicionados à base.");
   } catch (error) {
@@ -602,6 +618,39 @@ function updateCell(id, field, value) {
   render();
 }
 
+function attachmentsForRow(rowId) {
+  return state.attachmentsByRow.get(rowId) || [];
+}
+
+function addAttachments(rowId, files) {
+  const current = attachmentsForRow(rowId);
+  const next = [...current];
+  for (const file of files) {
+    const exists = next.some((item) => {
+      return item.name === file.name && item.size === file.size && item.lastModified === file.lastModified;
+    });
+    if (!exists) next.push(file);
+  }
+  state.attachmentsByRow.set(rowId, next);
+}
+
+function removeAttachment(rowId, index) {
+  const next = attachmentsForRow(rowId).filter((_, fileIndex) => fileIndex !== index);
+  if (next.length) {
+    state.attachmentsByRow.set(rowId, next);
+  } else {
+    state.attachmentsByRow.delete(rowId);
+  }
+  renderDrawer();
+}
+
+function formatFileSize(size) {
+  if (!Number.isFinite(size)) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function openDrawer(id) {
   state.selectedId = id;
   renderDrawer();
@@ -642,6 +691,7 @@ function renderDrawer() {
     ["Risco de perda", row.risco],
   ];
   els.drawerDetails.innerHTML = details.map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value || "")}</dd>`).join("");
+  renderVtexOrder(row);
 
   els.drawerChecklist.innerHTML = checklist(row)
     .map((item) => `<div class="check-item"><div><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail)}</small></div><span class="badge ${item.ok ? "badge-green" : "badge-red"}">${item.ok ? "Sim" : "Não"}</span></div>`)
@@ -657,7 +707,89 @@ function renderDrawer() {
   els.drawerResponsible.value = row.aprovacaoPorQuem || "";
   els.drawerEmailTo.value = localStorage.getItem("chargebackEmailTo") || "";
   els.drawerEvidenceFiles.value = "";
-  state.selectedEvidenceFiles = [];
+  renderDocumentList(row.id);
+}
+
+function renderVtexOrder(row) {
+  const hasVtexData = Boolean(row.vtexRaw || row.vtexItems?.length || row.vtexCustomer || row.vtexAddress || row.vtexPayment);
+  els.drawerVtexSection.hidden = !hasVtexData;
+  if (!hasVtexData) return;
+
+  const customer = row.vtexCustomer || {};
+  const address = row.vtexAddress || {};
+  const payment = row.vtexPayment || {};
+  const totals = Array.isArray(row.vtexTotals) ? row.vtexTotals : [];
+  const totalText = totals.length
+    ? totals.map((total) => `${total.name || total.id}: ${formatCurrency(total.value)}`).join(" | ")
+    : "";
+  const addressText = [
+    address.street,
+    address.number,
+    address.complement,
+    address.neighborhood,
+    address.city,
+    address.state,
+    address.postalCode,
+  ].filter(hasValue).join(", ");
+
+  const summary = [
+    ["Cliente", customer.name],
+    ["E-mail", customer.email],
+    ["Documento", customer.document],
+    ["Telefone", customer.phone],
+    ["Endereco", addressText],
+    ["Recebedor", address.receiverName],
+    ["Pagamento", payment.paymentSystemName || payment.group],
+    ["Parcelas", payment.installments],
+    ["Valor pagamento", formatCurrency(payment.value)],
+    ["TID", payment.tid],
+    ["NSU pagamento", payment.nsu],
+    ["Totais VTEX", totalText],
+  ];
+  els.drawerVtexSummary.innerHTML = summary
+    .map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value || "")}</dd>`)
+    .join("");
+
+  if (row.vtexAdminUrl) {
+    els.drawerVtexOpenLink.hidden = false;
+    els.drawerVtexOpenLink.href = row.vtexAdminUrl;
+  } else {
+    els.drawerVtexOpenLink.hidden = true;
+    els.drawerVtexOpenLink.removeAttribute("href");
+  }
+
+  els.drawerVtexItems.innerHTML = renderVtexItems(row.vtexItems || []);
+  els.drawerVtexJson.textContent = JSON.stringify(row.vtexRaw || {}, null, 2);
+}
+
+function renderVtexItems(items) {
+  if (!items.length) return `<p class="muted-note">Nenhum item retornado pela VTEX.</p>`;
+  const rows = items.map((item) => {
+    return `<tr>
+      <td>${escapeHtml(item.refId || item.id || "")}</td>
+      <td>${escapeHtml(item.name || item.skuName || "")}</td>
+      <td>${escapeHtml(item.quantity ?? "")}</td>
+      <td>${escapeHtml(formatCurrency(item.sellingPrice))}</td>
+    </tr>`;
+  }).join("");
+  return `<table>
+    <thead><tr><th>SKU</th><th>Item</th><th>Qtd.</th><th>Valor</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function renderDocumentList(rowId) {
+  const files = attachmentsForRow(rowId);
+  if (!files.length) {
+    els.drawerDocumentList.innerHTML = `<p class="muted-note">Nenhum documento adicionado neste caso.</p>`;
+    return;
+  }
+  els.drawerDocumentList.innerHTML = files.map((file, index) => {
+    return `<div class="document-item">
+      <span>${escapeHtml(file.name)} <small>${escapeHtml(formatFileSize(file.size))}</small></span>
+      <button type="button" class="document-remove" data-remove-attachment="${index}">Remover</button>
+    </div>`;
+  }).join("");
 }
 
 function setBadge(element, value, field) {
@@ -699,6 +831,7 @@ function evidenceList(row) {
 
 function buildEmailTemplate(row) {
   const subject = `Solicitação de chargeback - Pedido ${row.idInterno || "sem ID"} / NSU ${row.nsu || "sem NSU"}`;
+  const attachments = attachmentsForRow(row.id);
   const pendencies = String(row.pendencias || "")
     .split(";")
     .map((item) => item.trim())
@@ -726,8 +859,8 @@ function buildEmailTemplate(row) {
     pendencies.length ? pendencies.map((item) => `- ${item}`).join("\n") : "- Nenhuma pendência encontrada.",
     "",
     "Evidências anexadas:",
-    state.selectedEvidenceFiles.length
-      ? state.selectedEvidenceFiles.map((file) => `- ${file.name}`).join("\n")
+    attachments.length
+      ? attachments.map((file) => `- ${file.name}`).join("\n")
       : "- Sem anexos adicionados nesta tela.",
     "",
     "Observação operacional:",
@@ -780,6 +913,7 @@ async function downloadEmailDraft() {
   if (to) localStorage.setItem("chargebackEmailTo", to);
   const { subject, body } = buildEmailTemplate(row);
   const boundary = `chargeback_${Date.now()}`;
+  const attachments = attachmentsForRow(row.id);
   const lines = [
     `To: ${to}`,
     `Subject: ${encodeHeader(subject)}`,
@@ -793,7 +927,7 @@ async function downloadEmailDraft() {
     wrapBase64(base64Utf8(body)),
   ];
 
-  for (const file of state.selectedEvidenceFiles) {
+  for (const file of attachments) {
     const base64 = await fileToBase64(file);
     lines.push(
       `--${boundary}`,
@@ -934,7 +1068,16 @@ els.drawerResponsible.addEventListener("change", () => {
   if (state.selectedId) updateCell(state.selectedId, "aprovacaoPorQuem", els.drawerResponsible.value);
 });
 els.drawerEvidenceFiles.addEventListener("change", () => {
-  state.selectedEvidenceFiles = Array.from(els.drawerEvidenceFiles.files || []);
+  if (!state.selectedId) return;
+  addAttachments(state.selectedId, Array.from(els.drawerEvidenceFiles.files || []));
+  els.drawerEvidenceFiles.value = "";
+  renderDocumentList(state.selectedId);
+  showToast("Documento(s) adicionados ao caso.");
+});
+els.drawerDocumentList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-attachment]");
+  if (!button || !state.selectedId) return;
+  removeAttachment(state.selectedId, Number(button.dataset.removeAttachment));
 });
 els.copyEmailButton.addEventListener("click", copyEmailBody);
 els.downloadEmailButton.addEventListener("click", downloadEmailDraft);
