@@ -194,6 +194,7 @@ const state = {
   rows: [],
   selectedId: null,
   filters: {
+    search: "",
     bandeira: "",
     transportadora: "",
     retornoAprovacao: "",
@@ -222,6 +223,7 @@ const els = {
   exportCsvButton: document.getElementById("exportCsvButton"),
   clearFiltersButton: document.getElementById("clearFiltersButton"),
   clearDataButton: document.getElementById("clearDataButton"),
+  filterResultCount: document.getElementById("filterResultCount"),
   summaryCards: document.getElementById("summaryCards"),
   table: document.getElementById("chargebackTable"),
   tableWrap: document.getElementById("tableWrap"),
@@ -278,6 +280,7 @@ const els = {
 };
 
 const filterElements = {
+  search: document.getElementById("filterSearch"),
   bandeira: document.getElementById("filterBandeira"),
   transportadora: document.getElementById("filterTransportadora"),
   retornoAprovacao: document.getElementById("filterRetorno"),
@@ -783,13 +786,32 @@ function parseDelimited(text, delimiter) {
 }
 
 function filteredRows() {
+  const search = normalizeText(state.filters.search);
   return state.rows.filter((row) => {
-    return Object.entries(state.filters).every(([field, value]) => !value || String(row[field] ?? "") === value);
+    if (search) {
+      const blob = normalizeText(
+        allColumns
+          .map((column) => {
+            const field = headerToField[column];
+            return displayValue(field, row[field]);
+          })
+          .join(" ")
+      );
+      if (!blob.includes(search)) return false;
+    }
+    return Object.entries(state.filters)
+      .filter(([field]) => field !== "search")
+      .every(([field, value]) => !value || String(row[field] ?? "") === value);
   });
 }
 
 function updateFilterOptions() {
   for (const [field, select] of Object.entries(filterElements)) {
+    if (!select) continue;
+    if (field === "search") {
+      select.value = state.filters.search;
+      continue;
+    }
     const current = state.filters[field];
     const values = [...new Set(state.rows.map((row) => row[field]).filter(hasValue).map(String))].sort((a, b) => a.localeCompare(b, "pt-BR"));
     select.innerHTML = `<option value="">Todos</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
@@ -805,7 +827,7 @@ function render() {
 }
 
 function renderSummary() {
-  const rows = state.rows;
+  const rows = filteredRows();
   const statusCount = countBy(rows, "statusPrazo");
   const totalValue = rows.reduce((sum, row) => sum + (typeof row.valorChargeback === "number" ? row.valorChargeback : 0), 0);
   const cards = [
@@ -826,14 +848,26 @@ function renderTable() {
   const rows = filteredRows();
   els.emptyState.hidden = state.rows.length > 0;
   els.tableWrap.hidden = state.rows.length === 0;
+  if (els.filterResultCount) {
+    els.filterResultCount.textContent = state.rows.length
+      ? `${rows.length} de ${state.rows.length} caso(s) exibidos`
+      : "0 casos exibidos";
+  }
   if (!state.rows.length) {
     els.table.innerHTML = "";
     return;
   }
 
-  const headerHtml = allColumns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
-  const bodyHtml = rows
-    .map((row) => {
+  const headerHtml = `<th class="table-action-col">Caso</th>${allColumns.map((column) => `<th>${escapeHtml(column)}</th>`).join("")}`;
+  const bodyHtml = rows.length
+    ? rows.map((row) => {
+      const attachmentsCount = attachmentsForRow(row.id).length;
+      const actionCell = `<td class="table-action-col" data-id="${row.id}">
+        <button class="row-action-button" type="button" data-open-case="${row.id}">Abrir</button>
+        <button class="row-action-button row-action-primary" type="button" data-attach-case="${row.id}">
+          Comprovantes${attachmentsCount ? ` (${attachmentsCount})` : ""}
+        </button>
+      </td>`;
       const cells = allColumns
         .map((column) => {
           const field = headerToField[column];
@@ -841,12 +875,13 @@ function renderTable() {
           const editable = editableFields.has(field) ? ' contenteditable="true"' : "";
           const badge = badgeClass(field, row[field]);
           const content = badge ? `<span class="badge ${badge}">${escapeHtml(value)}</span>` : escapeHtml(value);
-          return `<td data-id="${row.id}" data-field="${field}"${editable}>${content}</td>`;
+          return `<td data-id="${row.id}" data-field="${field}" title="${escapeHtml(value)}"${editable}>${content}</td>`;
         })
         .join("");
-      return `<tr data-id="${row.id}">${cells}</tr>`;
-    })
-    .join("");
+      const selectedClass = row.id === state.selectedId ? ' class="selected-row"' : "";
+      return `<tr data-id="${row.id}"${selectedClass}>${actionCell}${cells}</tr>`;
+    }).join("")
+    : `<tr><td class="no-results-row" colspan="${allColumns.length + 1}">Nenhum caso encontrado com os filtros atuais.</td></tr>`;
   els.table.innerHTML = `<thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody>`;
 }
 
@@ -930,7 +965,7 @@ function removeAttachment(rowId, index) {
   } else {
     state.attachmentsByRow.delete(rowId);
   }
-  renderDrawer();
+  render();
 }
 
 function formatFileSize(size) {
@@ -942,6 +977,7 @@ function formatFileSize(size) {
 
 function openDrawer(id) {
   state.selectedId = id;
+  renderTable();
   renderDrawer();
   els.drawer.classList.add("open");
   els.drawer.setAttribute("aria-hidden", "false");
@@ -951,6 +987,7 @@ function closeDrawer() {
   state.selectedId = null;
   els.drawer.classList.remove("open");
   els.drawer.setAttribute("aria-hidden", "true");
+  renderTable();
 }
 
 function renderDrawer() {
@@ -1437,30 +1474,47 @@ els.exportCsvButton.addEventListener("click", () => exportRows("csv"));
 els.clearFiltersButton.addEventListener("click", () => {
   Object.keys(state.filters).forEach((key) => {
     state.filters[key] = "";
-    filterElements[key].value = "";
+    if (filterElements[key]) filterElements[key].value = "";
   });
+  renderSummary();
   renderTable();
 });
-els.clearDataButton.addEventListener("click", () => {
-  if (!window.confirm("Limpar todos os casos salvos neste navegador?")) return;
-  state.rows = [];
-  state.selectedId = null;
-  state.attachmentsByRow.clear();
-  localStorage.removeItem(STORAGE_KEY);
-  updateFilterOptions();
-  render();
-  closeDrawer();
-  showToast("Base local limpa.");
-});
+if (els.clearDataButton) {
+  els.clearDataButton.addEventListener("click", () => {
+    if (!window.confirm("Limpar todos os casos salvos neste navegador?")) return;
+    state.rows = [];
+    state.selectedId = null;
+    state.attachmentsByRow.clear();
+    localStorage.removeItem(STORAGE_KEY);
+    updateFilterOptions();
+    render();
+    closeDrawer();
+    showToast("Base local limpa.");
+  });
+}
 
 for (const [field, select] of Object.entries(filterElements)) {
-  select.addEventListener("change", () => {
+  if (!select) continue;
+  const eventName = field === "search" ? "input" : "change";
+  select.addEventListener(eventName, () => {
     state.filters[field] = select.value;
+    renderSummary();
     renderTable();
   });
 }
 
 els.table.addEventListener("click", (event) => {
+  const openButton = event.target.closest("[data-open-case]");
+  if (openButton) {
+    openDrawer(openButton.dataset.openCase);
+    return;
+  }
+  const attachButton = event.target.closest("[data-attach-case]");
+  if (attachButton) {
+    openDrawer(attachButton.dataset.attachCase);
+    els.drawerEvidenceFiles.click();
+    return;
+  }
   const row = event.target.closest("tr[data-id]");
   const cell = event.target.closest("td[contenteditable='true']");
   if (cell) return;
@@ -1511,7 +1565,7 @@ els.drawerEvidenceFiles.addEventListener("change", () => {
   if (!state.selectedId) return;
   addAttachments(state.selectedId, Array.from(els.drawerEvidenceFiles.files || []));
   els.drawerEvidenceFiles.value = "";
-  renderDocumentList(state.selectedId);
+  render();
   showToast("Documento(s) adicionados ao caso.");
 });
 els.drawerDocumentList.addEventListener("click", (event) => {

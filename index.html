@@ -109,7 +109,15 @@
       <section id="summaryCards" class="summary-grid" aria-label="Resumo"></section>
 
       <section class="toolbar" aria-label="Filtros">
+        <div class="toolbar-title">
+          <strong>Filtros da planilha</strong>
+          <span id="filterResultCount">0 casos exibidos</span>
+        </div>
         <div class="filter-grid">
+          <label class="filter-search">
+            <span>Buscar na planilha</span>
+            <input id="filterSearch" type="search" placeholder="NSU, pedido, cliente, pendência..." />
+          </label>
           <label>
             <span>Bandeira</span>
             <select id="filterBandeira"></select>
