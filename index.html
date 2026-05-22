@@ -20,6 +20,7 @@
         <button id="classifyButton" class="button" type="button">Rodar classificação</button>
         <button id="exportXlsxButton" class="button" type="button">Exportar XLSX</button>
         <button id="exportCsvButton" class="button" type="button">Exportar CSV</button>
+        <button id="clearDataButton" class="button button-danger" type="button">Limpar base local</button>
       </div>
     </header>
 
@@ -66,6 +67,26 @@
             <span>Valor chargeback</span>
             <input id="manualValor" type="text" placeholder="R$ 0,00" />
           </label>
+          <label>
+            <span>Valor taxa</span>
+            <input id="manualTaxa" type="text" placeholder="R$ 0,00" />
+          </label>
+          <label>
+            <span>Bandeira</span>
+            <input id="manualBandeira" type="text" />
+          </label>
+          <label>
+            <span>Transportadora</span>
+            <input id="manualTransportadora" type="text" />
+          </label>
+          <label>
+            <span>Número rastreio</span>
+            <input id="manualRastreio" type="text" />
+          </label>
+          <label>
+            <span>Data envio cliente</span>
+            <input id="manualDataEnvio" type="date" />
+          </label>
         </div>
         <button id="manualCreateButton" class="button button-primary" type="button">Criar caso manual</button>
       </section>
@@ -73,14 +94,14 @@
       <section class="vtex-panel" aria-label="Consulta VTEX">
         <div>
           <h2>Consulta VTEX</h2>
-          <p>Informe o número do pedido/NSU para preencher ID interno, prazo, status, transportadora, bandeira e rastreio.</p>
+          <p>Informe pedido ou NSU para preencher ID interno, prazo, status, transportadora, bandeira e rastreio. Ao encontrar, o caso já entra na base.</p>
         </div>
         <div class="vtex-actions">
           <label>
             <span>Pedido ou NSU</span>
             <input id="vtexOrderInput" type="text" placeholder="Ex: 123456-01" />
           </label>
-          <button id="vtexLookupButton" class="button button-primary" type="button">Buscar na VTEX</button>
+          <button id="vtexLookupButton" class="button button-primary" type="button">Buscar e adicionar</button>
         </div>
         <p id="vtexLookupStatus" class="inline-status"></p>
       </section>
@@ -192,6 +213,7 @@
             <label>
               <span>Fotos/evidências</span>
               <input id="drawerEvidenceFiles" type="file" multiple accept="image/*,.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip" />
+              <small class="field-hint">Os anexos entram no .eml gerado e ficam nesta sessão do navegador.</small>
             </label>
             <div id="drawerDocumentList" class="document-list"></div>
             <div class="email-actions">
@@ -201,6 +223,22 @@
             <label>
               <span>Próxima ação recomendada</span>
               <select id="drawerAction"></select>
+            </label>
+            <label>
+              <span>Retorno de aprovação</span>
+              <input id="drawerReturn" type="text" />
+            </label>
+            <label>
+              <span>Motivo de recusa</span>
+              <input id="drawerRefusalReason" type="text" />
+            </label>
+            <label>
+              <span>Classificação IA</span>
+              <select id="drawerClassificationEdit"></select>
+            </label>
+            <label>
+              <span>Risco</span>
+              <select id="drawerRiskEdit"></select>
             </label>
             <label>
               <span>Observação manual</span>

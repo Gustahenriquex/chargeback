@@ -96,6 +96,21 @@ textarea {
   background: transparent;
 }
 
+.button-danger {
+  color: var(--red);
+  border-color: #fca5a5;
+  background: #fff7f7;
+}
+
+.button-danger:hover {
+  border-color: var(--red);
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .file-input {
   position: absolute;
   width: 1px;
@@ -222,6 +237,14 @@ label span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 select,

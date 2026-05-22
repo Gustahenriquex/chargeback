@@ -144,7 +144,19 @@ const nextActions = [
 ];
 
 const editableFields = new Set([
+  "dataAberturaChargeback",
+  "prazoContestacao",
+  "valorChargeback",
+  "valorPedido",
+  "bandeira",
+  "valorTaxa",
+  "nomeCliente",
+  "transportadora",
+  "numeroRastreio",
+  "dataEnvioCliente",
   "retornoAprovacao",
+  "idInterno",
+  "sellerLoja",
   "motivoRecusa",
   "obs",
   "acao",
@@ -156,6 +168,26 @@ const editableFields = new Set([
   "classificacaoIa",
   "risco",
   "proximaAcao",
+]);
+
+const autoReclassifyFields = new Set([
+  "tipoChargeback",
+  "dataAberturaChargeback",
+  "prazoContestacao",
+  "valorChargeback",
+  "valorPedido",
+  "bandeira",
+  "valorTaxa",
+  "transportadora",
+  "numeroRastreio",
+  "dataEnvioCliente",
+  "retornoAprovacao",
+  "idInterno",
+  "motivoRecusa",
+  "obs",
+  "acao",
+  "idSignifyd",
+  "motivoContatoCliente",
 ]);
 
 const state = {
@@ -172,12 +204,24 @@ const state = {
   attachmentsByRow: new Map(),
 };
 
+const STORAGE_KEY = "chargebackChecklistRows";
+const STORAGE_VERSION = 1;
+const dateFields = new Set([
+  "dataTransacao",
+  "dataAberturaChargeback",
+  "prazoContestacao",
+  "dataEnvioCliente",
+  "dataFaturamento",
+  "dataAnalise",
+]);
+
 const els = {
   fileInput: document.getElementById("fileInput"),
   classifyButton: document.getElementById("classifyButton"),
   exportXlsxButton: document.getElementById("exportXlsxButton"),
   exportCsvButton: document.getElementById("exportCsvButton"),
   clearFiltersButton: document.getElementById("clearFiltersButton"),
+  clearDataButton: document.getElementById("clearDataButton"),
   summaryCards: document.getElementById("summaryCards"),
   table: document.getElementById("chargebackTable"),
   tableWrap: document.getElementById("tableWrap"),
@@ -191,6 +235,11 @@ const els = {
   manualCliente: document.getElementById("manualCliente"),
   manualSeller: document.getElementById("manualSeller"),
   manualValor: document.getElementById("manualValor"),
+  manualTaxa: document.getElementById("manualTaxa"),
+  manualBandeira: document.getElementById("manualBandeira"),
+  manualTransportadora: document.getElementById("manualTransportadora"),
+  manualRastreio: document.getElementById("manualRastreio"),
+  manualDataEnvio: document.getElementById("manualDataEnvio"),
   manualCreateButton: document.getElementById("manualCreateButton"),
   vtexOrderInput: document.getElementById("vtexOrderInput"),
   vtexLookupButton: document.getElementById("vtexLookupButton"),
@@ -217,6 +266,10 @@ const els = {
   copyEmailButton: document.getElementById("copyEmailButton"),
   downloadEmailButton: document.getElementById("downloadEmailButton"),
   drawerAction: document.getElementById("drawerAction"),
+  drawerReturn: document.getElementById("drawerReturn"),
+  drawerRefusalReason: document.getElementById("drawerRefusalReason"),
+  drawerClassificationEdit: document.getElementById("drawerClassificationEdit"),
+  drawerRiskEdit: document.getElementById("drawerRiskEdit"),
   drawerObs: document.getElementById("drawerObs"),
   drawerResponsible: document.getElementById("drawerResponsible"),
   drawerContested: document.getElementById("drawerContested"),
@@ -307,6 +360,59 @@ function formatCurrency(value) {
   const number = typeof value === "number" ? value : parseMoney(value);
   if (typeof number !== "number" || !Number.isFinite(number)) return value;
   return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function serializeRow(row) {
+  const copy = { ...row };
+  dateFields.forEach((field) => {
+    const date = parseDate(copy[field]);
+    if (date instanceof Date) copy[field] = date.toISOString();
+  });
+  delete copy.vtexRaw;
+  return copy;
+}
+
+function hydrateRow(row) {
+  const copy = { ...row, id: row.id || crypto.randomUUID() };
+  dateFields.forEach((field) => {
+    if (field in copy) copy[field] = parseDate(copy[field]);
+  });
+  return copy;
+}
+
+function saveRows() {
+  try {
+    const payload = {
+      version: STORAGE_VERSION,
+      rows: state.rows.map(serializeRow),
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn("Não foi possível salvar a base local.", error);
+  }
+}
+
+function loadRows() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    const rows = Array.isArray(payload) ? payload : payload.rows;
+    if (!Array.isArray(rows)) return;
+    state.rows = rows.map(hydrateRow).map((row) => {
+      const classified = classifyOperationalRow(row);
+      return {
+        ...classified,
+        classificacaoIa: row.classificacaoIa || classified.classificacaoIa,
+        proximaAcao: row.proximaAcao || classified.proximaAcao,
+        risco: classified.statusPrazo === "Vencido" ? "Alto" : (row.risco || classified.risco),
+      };
+    });
+  } catch (error) {
+    console.warn("Não foi possível carregar a base local.", error);
+    localStorage.removeItem(STORAGE_KEY);
+  }
 }
 
 function addDaysToDate(value, days) {
@@ -517,18 +623,24 @@ function createManualCase() {
     prazoContestacao: deadlineForType(type, chargebackDate),
     valorChargeback: parseMoney(els.manualValor.value),
     valorPedido: parseMoney(els.manualValor.value),
+    valorTaxa: parseMoney(els.manualTaxa.value),
+    bandeira: els.manualBandeira.value.trim(),
     idInterno: pedido,
     nomeCliente: els.manualCliente.value.trim(),
     sellerLoja: els.manualSeller.value.trim(),
+    transportadora: els.manualTransportadora.value.trim(),
+    numeroRastreio: els.manualRastreio.value.trim(),
+    dataEnvioCliente: parseDate(els.manualDataEnvio.value),
     motivoRecusa: "",
     obs: els.manualMotivo.value.trim(),
     origemClassificacao: "Manual + regras locais",
   });
   state.rows.unshift(row);
+  saveRows();
   updateFilterOptions();
   render();
   openDrawer(row.id);
-  [els.manualNsu, els.manualDataChargeback, els.manualMotivo, els.manualPedido, els.manualCliente, els.manualSeller, els.manualValor].forEach((input) => {
+  [els.manualNsu, els.manualDataChargeback, els.manualMotivo, els.manualPedido, els.manualCliente, els.manualSeller, els.manualValor, els.manualTaxa, els.manualBandeira, els.manualTransportadora, els.manualRastreio, els.manualDataEnvio].forEach((input) => {
     input.value = "";
   });
   showToast("Caso manual criado.");
@@ -565,10 +677,11 @@ async function lookupVtexOrder() {
     } else {
       state.rows.unshift(nextRow);
     }
+    saveRows();
     updateFilterOptions();
     render();
     openDrawer(openedId);
-    els.vtexLookupStatus.textContent = `Pedido ${nextRow.idInterno || term} carregado da VTEX.`;
+    els.vtexLookupStatus.textContent = `Pedido ${nextRow.idInterno || term} carregado e adicionado à base.`;
     showToast("Dados da VTEX adicionados à base.");
   } catch (error) {
     els.vtexLookupStatus.textContent = error.message;
@@ -580,6 +693,7 @@ async function lookupVtexOrder() {
 
 function classifyAll() {
   state.rows = state.rows.map(classifyOperationalRow);
+  saveRows();
   render();
   showToast("Classificação automática concluída.");
 }
@@ -600,6 +714,7 @@ async function importFile(file) {
       records = XLSX.utils.sheet_to_json(sheet, { defval: "" }).map(normalizeRecord).filter((row) => !rowIsEmpty(row));
     }
     state.rows = records.map(classifyOperationalRow);
+    saveRows();
     updateFilterOptions();
     render();
     showToast(`${records.length} caso(s) importado(s).`);
@@ -771,10 +886,23 @@ function countBy(rows, field) {
   }, {});
 }
 
+function parseFieldValue(field, value) {
+  if (dateFields.has(field)) return parseDate(value);
+  if (["valorChargeback", "valorPedido", "valorTaxa"].includes(field)) return parseMoney(value);
+  return value;
+}
+
 function updateCell(id, field, value) {
   const row = state.rows.find((item) => item.id === id);
   if (!row) return;
-  row[field] = value;
+  row[field] = parseFieldValue(field, value);
+  if (["tipoChargeback", "dataAberturaChargeback"].includes(field)) {
+    row.prazoContestacao = row.prazoContestacao || deadlineForType(row.tipoChargeback, row.dataAberturaChargeback);
+  }
+  if (autoReclassifyFields.has(field)) {
+    Object.assign(row, classifyOperationalRow(row));
+  }
+  saveRows();
   updateFilterOptions();
   render();
 }
@@ -875,6 +1003,14 @@ function renderDrawer() {
 
   els.drawerAction.innerHTML = nextActions.map((action) => `<option value="${escapeHtml(action)}">${escapeHtml(action)}</option>`).join("");
   els.drawerAction.value = row.proximaAcao || nextActions[0];
+  els.drawerReturn.value = row.retornoAprovacao || "";
+  els.drawerRefusalReason.value = row.motivoRecusa || "";
+  els.drawerClassificationEdit.innerHTML = ["", ...classifications]
+    .map((classification) => `<option value="${escapeHtml(classification)}">${escapeHtml(classification)}</option>`)
+    .join("");
+  els.drawerClassificationEdit.value = row.classificacaoIa || "";
+  els.drawerRiskEdit.innerHTML = ["", ...risks].map((risk) => `<option value="${escapeHtml(risk)}">${escapeHtml(risk)}</option>`).join("");
+  els.drawerRiskEdit.value = row.risco || "";
   els.drawerObs.value = row.obs || "";
   els.drawerResponsible.value = row.aprovacaoPorQuem || "";
   els.drawerContested.value = row.contestadoCtc || "";
@@ -1095,8 +1231,17 @@ async function copyEmailBody() {
   const row = state.rows.find((item) => item.id === state.selectedId);
   if (!row) return;
   const { body } = buildEmailTemplate(row);
-  await navigator.clipboard.writeText(body);
-  showToast("Corpo do e-mail copiado.");
+  const to = els.drawerEmailTo.value.trim();
+  if (to) localStorage.setItem("chargebackEmailTo", to);
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard indisponível.");
+    await navigator.clipboard.writeText(body);
+    showToast("Corpo do e-mail copiado.");
+  } catch {
+    const filename = `chargeback_${row.idInterno || row.nsu || "caso"}_email.txt`.replace(/[\\/:*?"<>|]/g, "_");
+    downloadBlob(body, filename, "text/plain;charset=utf-8");
+    showToast("Não consegui copiar; baixei o texto do e-mail.");
+  }
 }
 
 function base64Utf8(text) {
@@ -1211,6 +1356,49 @@ function csvEscape(value) {
   return /[";\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+function runChargebackClassifierExamples() {
+  const past = new Date();
+  past.setDate(past.getDate() - 1);
+  const future = new Date();
+  future.setDate(future.getDate() + 10);
+  const examples = [
+    {
+      name: "Linha sem rastreio",
+      row: { prazoContestacao: future, transportadora: "Correios", dataEnvioCliente: future },
+      assert: (result) => String(result.pendencias).includes("Sem rastreio informado"),
+    },
+    {
+      name: "Prazo vencido",
+      row: { prazoContestacao: past, numeroRastreio: "BR123", transportadora: "Correios", dataEnvioCliente: future },
+      assert: (result) => result.risco === "Alto" && result.statusPrazo === "Vencido",
+    },
+    {
+      name: "Obs fraude",
+      row: { prazoContestacao: future, obs: "cliente desconhece fraude" },
+      assert: (result) => result.classificacaoIa === "Fraude",
+    },
+    {
+      name: "Obs estorno",
+      row: { prazoContestacao: future, obs: "solicitar estorno" },
+      assert: (result) => result.classificacaoIa === "Compensação",
+    },
+    {
+      name: "Evidência logística completa",
+      row: { prazoContestacao: future, numeroRastreio: "BR123", transportadora: "Correios", dataEnvioCliente: future },
+      assert: (result) => result.risco === "Baixo",
+    },
+    {
+      name: "Sem prazo",
+      row: {},
+      assert: (result) => result.statusPrazo === "Sem prazo informado",
+    },
+  ];
+  return examples.map((example) => {
+    const result = classifyOperationalRow({ id: crypto.randomUUID(), ...example.row });
+    return { name: example.name, passed: example.assert(result), result };
+  });
+}
+
 function downloadBlob(content, filename, type) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -1253,6 +1441,17 @@ els.clearFiltersButton.addEventListener("click", () => {
   });
   renderTable();
 });
+els.clearDataButton.addEventListener("click", () => {
+  if (!window.confirm("Limpar todos os casos salvos neste navegador?")) return;
+  state.rows = [];
+  state.selectedId = null;
+  state.attachmentsByRow.clear();
+  localStorage.removeItem(STORAGE_KEY);
+  updateFilterOptions();
+  render();
+  closeDrawer();
+  showToast("Base local limpa.");
+});
 
 for (const [field, select] of Object.entries(filterElements)) {
   select.addEventListener("change", () => {
@@ -1280,6 +1479,18 @@ document.querySelectorAll("[data-close-drawer]").forEach((element) => {
 
 els.drawerAction.addEventListener("change", () => {
   if (state.selectedId) updateCell(state.selectedId, "proximaAcao", els.drawerAction.value);
+});
+els.drawerReturn.addEventListener("change", () => {
+  if (state.selectedId) updateCell(state.selectedId, "retornoAprovacao", els.drawerReturn.value);
+});
+els.drawerRefusalReason.addEventListener("change", () => {
+  if (state.selectedId) updateCell(state.selectedId, "motivoRecusa", els.drawerRefusalReason.value);
+});
+els.drawerClassificationEdit.addEventListener("change", () => {
+  if (state.selectedId) updateCell(state.selectedId, "classificacaoIa", els.drawerClassificationEdit.value);
+});
+els.drawerRiskEdit.addEventListener("change", () => {
+  if (state.selectedId) updateCell(state.selectedId, "risco", els.drawerRiskEdit.value);
 });
 els.drawerObs.addEventListener("change", () => {
   if (state.selectedId) updateCell(state.selectedId, "obs", els.drawerObs.value);
@@ -1311,5 +1522,13 @@ els.drawerDocumentList.addEventListener("click", (event) => {
 els.copyEmailButton.addEventListener("click", copyEmailBody);
 els.downloadEmailButton.addEventListener("click", downloadEmailDraft);
 
+window.addEventListener("unhandledrejection", (event) => {
+  console.error(event.reason);
+  showToast("Ocorreu um erro inesperado. Verifique os dados e tente novamente.");
+});
+
+window.runChargebackClassifierExamples = runChargebackClassifierExamples;
+
+loadRows();
 updateFilterOptions();
 render();
