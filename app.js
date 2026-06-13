@@ -448,7 +448,58 @@ function platformForType(type) {
   if (normalized === "Não contestar") return "Acompanhamento interno";
   return "";
 }
+function buildSignifydPayload(row, endpoint) {
+  if (endpoint === "representments") {
+    return {
+      orderId: row.idInterno || row.nsu || "",
+      chargebackId: row.idSignifyd || row.nsu || row.idInterno || "",
+      partnerChargebackId: row.nsu || row.idInterno || "",
+      outcome: row.contestadoCtc === "Sim" ? "WON" : "LOST",
+      metadata: {
+        source: "checklist-chargeback-mensal",
+        caseId: row.id,
+        endpoint,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  }
 
+  return {
+    orderId: row.idInterno || row.nsu || "",
+    chargebackId: row.idSignifyd || row.nsu || row.idInterno || "",
+    partnerChargebackId: row.nsu || row.idInterno || "",
+    partnerMerchantId: row.sellerLoja || "",
+    chargeback: {
+      type: row.tipoChargeback || "",
+      status: row.retornoAprovacao || row.statusVtex || "",
+      reason: row.motivoRecusa || row.motivoContatoCliente || row.obs || "",
+      amount: row.valorChargeback || "",
+      currency: "BRL",
+      feeAmount: row.valorTaxa || "",
+      cardBrand: row.bandeira || "",
+      customerName: row.nomeCliente || "",
+      trackingNumber: row.numeroRastreio || "",
+      carrier: row.transportadora || "",
+      transactionDate: formatDate(row.dataTransacao) || "",
+      openedAt: formatDate(row.dataAberturaChargeback) || "",
+      dueAt: formatDate(row.prazoContestacao) || "",
+      notes: row.obs || "",
+    },
+    fulfillments: [
+      {
+        trackingNumber: row.numeroRastreio || "",
+        carrier: row.transportadora || "",
+        deliveredAt: formatDate(row.dataEnvioCliente) || "",
+      },
+    ],
+    metadata: {
+      source: "checklist-chargeback-mensal",
+      caseId: row.id,
+      endpoint,
+      generatedAt: new Date().toISOString(),
+    },
+  };
+}
 function classifyOperationalRow(row) {
   const type = normalizeChargebackType(row.tipoChargeback);
   const base = classifyRow({
