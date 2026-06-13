@@ -20,7 +20,44 @@
   --shadow: 0 18px 50px rgba(23, 32, 51, 0.16);
   font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
 }
+.api-actions,
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 
+.signifyd-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.payload-editor textarea {
+  min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.signifyd-response {
+  min-height: 120px;
+}
+
+.inline-status.info {
+  color: #0f766e;
+}
+
+.inline-status.success {
+  color: #166534;
+}
+
+.inline-status.error {
+  color: #b91c1c;
+}
 * {
   box-sizing: border-box;
 }
