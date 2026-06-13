@@ -1403,6 +1403,65 @@ function startOfToday() {
   return today;
 }
 
+async function sendSignifydRequest() {
+  const row = state.rows.find((item) => item.id === state.selectedId);
+  if (!row) return;
+
+  let payload;
+  try {
+    payload = readSignifydPayload() || buildSignifydPayload(row, normalizeSignifydEndpoint(els.signifydEndpoint.value));
+  } catch (error) {
+    setSignifydStatus("Payload JSON inválido.", "error");
+    setSignifydResponse({ error: "JSON inválido", details: String(error.message || error) });
+    return;
+  }
+
+  const username = els.signifydUsername.value.trim();
+  const password = els.signifydPassword.value;
+  const teamId = els.signifydTeamId.value.trim();
+  const endpoint = normalizeSignifydEndpoint(els.signifydEndpoint.value);
+
+  if (!username) {
+    setSignifydStatus("Informe a username/API key antes de enviar.", "error");
+    return;
+  }
+
+  setSignifydStatus("Enviando chargeback via API da Signifyd...", "info");
+  setSignifydResponse({ request: payload });
+
+  try {
+    const response = await fetch("/api/signifyd", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint,
+        username,
+        password,
+        teamId,
+        payload,
+      }),
+    });
+
+    const text = await response.text();
+    let body = text;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = text;
+    }
+
+    setSignifydResponse(body);
+    if (response.ok) {
+      setSignifydStatus(`Chargeback enviado via API. HTTP ${response.status}.`, "success");
+    } else {
+      setSignifydStatus(`Signifyd retornou HTTP ${response.status}.`, "error");
+    }
+  } catch (error) {
+    setSignifydStatus("Falha ao enviar chargeback via API da Signifyd.", "error");
+    setSignifydResponse({ error: String(error.message || error) });
+  }
+}
+
 function exportRows(format) {
   if (!state.rows.length) {
     showToast("Importe uma base antes de exportar.");
