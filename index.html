@@ -276,7 +276,46 @@
         </div>
       </section>
     </aside>
-
+<section class="signifyd-panel">
+  <div class="section-title-row">
+    <h3>Envio Signifyd via API</h3>
+    <span class="field-hint">Este envio usa a API da Signifyd direto no painel, sem e-mail. Username = chave de API; senha em branco.</span>
+  </div>
+  <div class="drawer-edit-grid">
+    <label>
+      <span>Endpoint</span>
+      <select id="signifydEndpoint">
+        <option value="chargebacks">Create chargeback</option>
+        <option value="representments">Representment outcome</option>
+      </select>
+    </label>
+    <label>
+      <span>Username / API key</span>
+      <input id="signifydUsername" type="text" placeholder="Cole aqui a chave de API" />
+    </label>
+    <label>
+      <span>Senha</span>
+      <input id="signifydPassword" type="password" placeholder="Deixe em branco" />
+    </label>
+    <label>
+      <span>Team ID</span>
+      <input id="signifydTeamId" type="text" placeholder="Opcional" />
+    </label>
+  </div>
+  <label class="payload-editor">
+    <span>Payload JSON</span>
+    <textarea id="signifydPayload" rows="14" spellcheck="false"></textarea>
+  </label>
+  <div class="api-actions">
+    <button id="signifydPopulateButton" class="button" type="button">Montar payload do caso</button>
+    <button id="signifydSendButton" class="button button-primary" type="button">Enviar chargeback via API</button>
+  </div>
+  <p id="signifydStatus" class="inline-status"></p>
+  <details class="raw-json-box" open>
+    <summary>Resposta da API da Signifyd</summary>
+    <pre id="signifydResponse" class="signifyd-response"></pre>
+  </details>
+</section>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </body>
 </html>
